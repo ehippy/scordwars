@@ -1,10 +1,12 @@
 require('dotenv').config()
+const jwt = require('jsonwebtoken');
 
 const settings = {
   discord_oauth2_client_id: process.env.DISCORD_OAUTH2_CLIENT_ID,
   discord_oauth2_client_secret: process.env.DISCORD_OAUTH2_CLIENT_SECRET,
   discordCallbackURL: '/auth/discord/callback',
-  sessionSecret: process.env.SESSION_SECRET
+  sessionSecret: process.env.SESSION_SECRET,
+  uiUrl: 'http://localhost:5173/'
 }
 
 const express = require('express')
@@ -57,12 +59,9 @@ app.get('/auth/discord', passport.authenticate('discord'));
 app.get(settings.discordCallbackURL, passport.authenticate('discord', {
   failureRedirect: '/'
 }), function (req, res) {
-  res.redirect('/') // Successful auth
+  const jwtPayload = req.session.passport.user
+  res.redirect(settings.uiUrl + '?jwt=' + jwt.sign(jwtPayload, settings.sessionSecret)) // Successful auth
 });
-
-app.get('/whut', (req, res) => {
-  res.send('Hello World!')
-})
 
 app.use('/', express.static('public'))
 
