@@ -28,33 +28,41 @@ app.use(session({
 }));
 app.use(passport.authenticate('session'));
 
-passport.serializeUser(function(user, done) {
+passport.serializeUser(function (user, done) {
   done(null, user);
 });
 
-passport.deserializeUser(function(user, done) {
+passport.deserializeUser(function (user, done) {
   done(null, user);
 });
 
 passport.use(new DiscordStrategy({
-    clientID: settings.discord_oauth2_client_id,
-    clientSecret: settings.discord_oauth2_client_secret,
-    callbackURL: settings.discordCallbackURL,
-    scope: scopes
+  clientID: settings.discord_oauth2_client_id,
+  clientSecret: settings.discord_oauth2_client_secret,
+  callbackURL: settings.discordCallbackURL,
+  scope: scopes
 },
-function(accessToken, refreshToken, profile, cb) {
+  function (accessToken, refreshToken, profile, cb) {
     console.log(profile)
-    return cb(null, {username: profile.username});
-}));
+    const userProfile = {
+      username: profile.username,
+      avatar: profile.avatar,
+      email: profile.email,
+      id: profile.id
+    }
+    return cb(null, userProfile);
+  }));
 
 app.get('/auth/discord', passport.authenticate('discord'));
 app.get(settings.discordCallbackURL, passport.authenticate('discord', {
-    failureRedirect: '/'
-}), function(req, res) {
-  // set a cookie
-    res.redirect('/') // Successful auth
+  failureRedirect: '/'
+}), function (req, res) {
+  res.redirect('/') // Successful auth
 });
 
+app.get('/whut', (req, res) => {
+  res.send('Hello World!')
+})
 
 app.use('/', express.static('public'))
 
