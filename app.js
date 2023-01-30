@@ -60,7 +60,7 @@ app.get(settings.discordCallbackURL, passport.authenticate('discord', {
   failureRedirect: '/'
 }), function (req, res) {
   const jwtPayload = req.session.passport.user
-  res.redirect(settings.uiUrl + '?jwt=' + jwt.sign(jwtPayload, settings.sessionSecret)) // Successful auth
+  res.redirect(settings.uiUrl + 'authResponse?jwt=' + jwt.sign(jwtPayload, settings.sessionSecret)) // Successful auth
 });
 
 app.use('/', express.static('public'))
