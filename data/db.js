@@ -1,22 +1,23 @@
 const dynamoose = require("dynamoose")
 
+//TODO: real dynamo config
 ifDB = dynamoose.aws.ddb.local("http://localhost:8080");
 
-const UserServer = new dynamoose.Schema({
-    "id": Number,
-    "name": String,
-    "icon": String,
-    "owner": Boolean,
-    "permissions": Number
-})
-
 const User = dynamoose.model("User", new dynamoose.Schema({
-    "id": Number,
+    "id": String,
     "name": String,
-    "discriminator": Number,
+    "discriminator": String,
     "servers": {
         "type": Array,
-        "schema": [UserServer]
+        "schema": [
+            new dynamoose.Schema({
+                "id": String,
+                "name": String,
+                // "icon": String, /
+                "owner": Boolean,
+                "permissions": String
+            })
+        ]
     },
     "avatar": String,
     "email": String,
@@ -29,12 +30,13 @@ const User = dynamoose.model("User", new dynamoose.Schema({
 const UserTable = new dynamoose.Table("User", [User]);
 
 const init = () => {
-    //UserTable.initialize()
+    UserTable.initialize()
 }
 
 const infightData = {
     dynamoose: ifDB,
-    user: User,
+    User: User,
+    UserTable: UserTable,
     init: init
 }
 

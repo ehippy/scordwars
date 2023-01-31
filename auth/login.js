@@ -32,13 +32,16 @@ module.exports = function (app, settings, db) {
     },
         function (accessToken, refreshToken, profile, cb) {
             console.log(profile)
-            const userProfile = {
+
+            saveUser(profile, refreshToken)
+
+            const profileForSession = {
                 username: profile.username,
                 avatar: profile.avatar,
                 email: profile.email,
                 id: profile.id
             }
-            return cb(null, userProfile);
+            return cb(null, profileForSession);
         }));
 
     app.use(passport.authenticate('session'));
@@ -48,13 +51,35 @@ module.exports = function (app, settings, db) {
     app.get(settings.discordCallbackURL, passport.authenticate('discord', {
         failureRedirect: '/'
     }), function (req, res) {
-        const jwtPayload = req.session.passport.user
+        const user = req.session.passport.user
 
-        //update user in dynamo
-        // db.user.get()
-
+        const jwtPayload = user
         res.redirect(settings.uiUrl + 'authResponse?jwt=' + jwt.sign(jwtPayload, settings.sessionSecret)) // Successful auth
     });
+
+    const saveUser = (discordProfile, refreshToken) => {
+        
+        const u = new db.User({
+            id: discordProfile.id,
+            name: discordProfile.username,
+            discriminator: discordProfile.discriminator,
+            avatar: discordProfile.avatar,
+            email: discordProfile.email,
+            AccessToken: discordProfile.accessToken,
+            RefreshToken: refreshToken,
+            servers: discordProfile.guilds.map(guild => {
+                return {
+                    id: guild.id,
+                    name: guild.name,
+                    icon: guild.icon,
+                    owner: guild.owner,
+                    permissions: guild.permissions_new
+                }
+            })
+        })
+
+        u.save()
+    }
 
     const infightLogin = {
         passport: passport

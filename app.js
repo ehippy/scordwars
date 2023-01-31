@@ -9,16 +9,34 @@ const settings = {
 
 const express = require('express')
 const app = express()
+const cors = require('cors')
 const port = 3000
+app.use(express.json());
+app.use(cors())
 
-const db = require("./db")
-db.init()
+const db = require("./data/db")
+//db.init()
 
-const infightLogin = require("./login")(app, settings, db)
+const infightLogin = require("./auth/login")(app, settings, db)
+const verifyToken = require("./auth/tokenAuthMiddleware")
 const disco = require("discord.js")
 
 app.get('/', (req, res) => {
   res.send('Hello from the infight api!')
+})
+
+app.get('/myTeams', verifyToken, (req, res) => {
+
+  db.User.get(req.user.id, (error, myUser) => {
+    if (error) {
+        console.error(error);
+        throw new Error('Could not get teams')
+    } else {
+        console.log(myUser);
+        res.send(myUser.servers)
+    }
+});
+
 })
 
 app.listen(port, () => {
