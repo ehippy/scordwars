@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const db = require("../data/db")
+const db = require("../data/infightDB")
 
 const verifyToken = (req, res, next) => {
     if (req.headers && req.headers.authorization) {

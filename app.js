@@ -15,15 +15,13 @@ const port = 3000
 app.use(express.json());
 app.use(cors())
 
-const db = require("./data/db")
-
 const infightDB = require('./data/infightDB')
 infightDB.init()
 
-const infightLogin = require("./auth/login")(app, settings, db)
+const infightLogin = require("./auth/login")(app, settings, infightDB)
 const verifyToken = require("./auth/tokenAuthMiddleware")
 
-const ifDisco = require('./data/ifDiscord')(db)
+const ifDisco = require('./data/ifDiscord')(infightDB)
 
 
 app.get('/', (req, res) => {
@@ -31,39 +29,30 @@ app.get('/', (req, res) => {
   res.send('Hello from the infight api!')
 })
 
-app.get('/myTeams', verifyToken, (req, res) => {
+app.get('/myTeams', verifyToken, async (req, res) => {
 
-  db.User.get(req.user.id, (error, myUser) => {
-    if (error) {
-      console.error(error);
-      next(error)
-    } else {
-      console.log(myUser);
-      if (myUser.id == req.user.id) {
-        res.send(myUser.servers)
-      } else {
-        next(new Error("no matching user"))
-      }
-    }
-  })
-})
+  const player = await infightDB.Player.findByPk(req.user.id)
+  if (player === null) {
+    res.send('404')
+    next()
+  }
+  
+  const guilds = await player.getGuilds()
+  res.send(guilds)
 
-
-app.get('/server/:serverId', verifyToken, (req, res) => {
-
-  db.Server.get(req.params.serverId, (error, myServer) => {
-    if (error) {
-      console.error(error);
-      next(error)
-    } else {
-      console.log(myServer);
-      if (myServer.id == req.params.serverId) {
-        res.send(myServer)
-      } else {
-        next(new Error("no matching server"))
-      }
-    }
-  })
+  // db.User.get(req.user.id, (error, myUser) => {
+  //   if (error) {
+  //     console.error(error);
+  //     next(error)
+  //   } else {
+  //     console.log(myUser);
+  //     if (myUser.id == req.user.id) {
+  //       res.send(myUser.servers)
+  //     } else {
+  //       next(new Error("no matching user"))
+  //     }
+  //   }
+  // })
 })
 
 app.listen(port, () => {

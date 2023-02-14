@@ -13,23 +13,25 @@ module.exports = function (db) {
     });
 
     //joined a server
-    client.on(Events.GuildCreate, guild => {
+    client.on(Events.GuildCreate, async guild => {
         console.log("Joined a new guild: " + guild.name);
-        const s = new db.Server({
+        const g = db.Guild.build({
             id: guild.id,
             name: guild.name,
             icon: guild.icon
         })
-        s.save()
+        await g.save()
 
-        guild.channels.create({
+        const channel = await guild.channels.create({
             name: "infight",
             type: ChannelType.GuildText
-        }).then(channel => {
-            s.gameChannelId = channel.id
-            s.save()
-            channel.send('Hiya guys!')
         })
+
+        g.gameChannelId = channel.id
+        g.isConnected = true
+        await g.save()
+
+        channel.send('Hiya guys!')
     })
 
     //removed from a server

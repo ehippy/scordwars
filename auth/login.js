@@ -30,10 +30,10 @@ module.exports = function (app, settings, db) {
         callbackURL: settings.discordCallbackURL,
         scope: scopes
     },
-        function (accessToken, refreshToken, profile, cb) {
+        async function (accessToken, refreshToken, profile, cb) { //TODO: test is this async thinger works?
             console.log(profile)
 
-            saveUser(profile, refreshToken)
+            await saveUser(profile, refreshToken)
 
             const profileForSession = {
                 username: profile.username,
@@ -57,28 +57,41 @@ module.exports = function (app, settings, db) {
         res.redirect(settings.uiUrl + 'authResponse?jwt=' + jwt.sign(jwtPayload, settings.sessionSecret)) // Successful auth
     });
 
-    const saveUser = (discordProfile, refreshToken) => {
-        
-        const u = new db.User({
+    const saveUser = async (discordProfile, refreshToken) => {
+    
+        await db.Player.upsert({
             id: discordProfile.id,
             name: discordProfile.username,
             discriminator: discordProfile.discriminator,
-            avatar: discordProfile.avatar,
-            email: discordProfile.email,
-            AccessToken: discordProfile.accessToken,
-            RefreshToken: refreshToken,
-            servers: discordProfile.guilds.map(guild => {
-                return {
-                    id: guild.id,
-                    name: guild.name,
-                    icon: guild.icon,
-                    owner: guild.owner,
-                    permissions: guild.permissions_new
-                }
-            })
+            avatar: discordProfile.avatar            
         })
 
-        u.save()
+        //add or update Guilds
+        const foundGuilds = []
+        const associations = []
+        discordProfile.guilds.forEach(guild => {
+            foundGuilds.push({
+                id: guild.id,
+                name: guild.name,
+                icon: guild.icon
+            })
+
+            associations.push({
+                PlayerId: discordProfile.id,
+                GuildId: guild.id,
+                isAdmin: false //TODO: read this from the discordProfile.permissions or whatever
+            })
+        });
+        await db.Guild.bulkCreate(foundGuilds, {
+            updateOnDuplicate: ['name', 'icon']
+        })
+
+
+        await db.PlayerGuild.bulkCreate(associations, {
+            updateOnDuplicate: ['isAdmin']
+        }).catch(function (err) {
+            console.log(err)
+          })
     }
 
     const infightLogin = {

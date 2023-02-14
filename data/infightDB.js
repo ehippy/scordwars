@@ -15,7 +15,7 @@ const Player = sequelize.define('Player', {
         type: DataTypes.STRING,
         allowNull: false
     },
-    icon: {
+    avatar: {
         type: DataTypes.STRING
     }
 })
@@ -35,8 +35,12 @@ const Guild = sequelize.define('Guild', {
     },
     isConnected: {
         type: DataTypes.BOOLEAN,
-        allowNull: false,
+        allowNull: true,
         defaultValue: false
+    },
+    gameChannelId: {
+        type: DataTypes.STRING,
+        allowNull: true
     }
 })
 
@@ -77,5 +81,6 @@ module.exports = {
         console.log("All tables were synchronized successfully.");
     },
     Player: Player,
-    Guild: Guild
+    Guild: Guild,
+    PlayerGuild: PlayerGuild
 }
