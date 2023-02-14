@@ -29,6 +29,18 @@ const User = dynamoose.model("User", new dynamoose.Schema({
 }));
 const UserTable = new dynamoose.Table("User", [User]);
 
+const Server = dynamoose.model("server", new dynamoose.Schema({
+    "id": String,
+    "name": String,
+    "icon": String,
+    "gameChannelId": String,
+    "currentGameId": String
+}, {
+    "saveUnknown": true,
+    "timestamps": true
+}));
+const ServerTable = new dynamoose.Table("Server", [Server]);
+
 const init = () => {
     UserTable.initialize()
 }
@@ -37,6 +49,8 @@ const infightData = {
     dynamoose: ifDB,
     User: User,
     UserTable: UserTable,
+    Server: Server,
+    ServerTable: ServerTable,
     init: init
 }
 

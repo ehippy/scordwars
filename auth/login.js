@@ -8,7 +8,7 @@ module.exports = function (app, settings, db) {
 
     const passport = require('passport');
 
-    passport.serializeUser(function (user, done) {
+    passport.serializeUser(function (user, done) { //TODO: remove sessions, cuz jwt...
         done(null, user);
     });
 
