@@ -41,6 +41,10 @@ const Guild = sequelize.define('Guild', {
     gameChannelId: {
         type: DataTypes.STRING,
         allowNull: true
+    },
+    currentGameId: {
+        type: DataTypes.INTEGER,
+        allowNull: true
     }
 })
 
@@ -60,6 +64,10 @@ const PlayerGuild = sequelize.define('PlayerGuilds', {
         }
     },
     isAdmin: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    isOptedInToPlay: {
         type: DataTypes.BOOLEAN,
         defaultValue: false
     }

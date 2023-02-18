@@ -21,7 +21,7 @@ infightDB.init()
 const infightLogin = require("./auth/login")(app, settings, infightDB)
 const verifyToken = require("./auth/tokenAuthMiddleware")
 
-const ifDisco = require('./data/ifDiscord')(infightDB)
+const ifDisco = require('./discord/ifDiscord')(infightDB)
 
 
 app.get('/', (req, res) => {
@@ -36,7 +36,7 @@ app.get('/myTeams', verifyToken, async (req, res) => {
     res.send('404')
     next()
   }
-  
+
   const guilds = await player.getGuilds()
   res.send(guilds)
 
