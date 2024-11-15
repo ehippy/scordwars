@@ -1,9 +1,11 @@
+console.log("Starting scordwards server")
+
 require('dotenv').config()
 const settings = {
   discord_oauth2_client_id: process.env.DISCORD_OAUTH2_CLIENT_ID,
   discord_oauth2_client_secret: process.env.DISCORD_OAUTH2_CLIENT_SECRET,
   discordCallbackURL: '/auth/discord/callback',
-  discordToken: process.env.DISCORD_TOKEN,
+  discordToken: process.env.DISCORD_BOT_TOKEN,
   sessionSecret: process.env.SESSION_SECRET,
   uiUrl: 'http://localhost:5173/'
 }

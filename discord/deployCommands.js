@@ -1,5 +1,8 @@
+const clientId = process.env.DISCORD_CLIENT_ID;
+const guildId = process.env.DISCORD_GUILD_ID;
+const token = process.env.DISCORD_BOT_TOKEN;
+
 const { REST, Routes } = require('discord.js');
-const { clientId, guildId, token } = require('./deployConfig.json');
 const fs = require('node:fs');
 
 const commands = [];
