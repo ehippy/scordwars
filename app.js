@@ -41,20 +41,6 @@ app.get('/myTeams', verifyToken, async (req, res) => {
 
   const guilds = await player.getGuilds()
   res.send(guilds)
-
-  // db.User.get(req.user.id, (error, myUser) => {
-  //   if (error) {
-  //     console.error(error);
-  //     next(error)
-  //   } else {
-  //     console.log(myUser);
-  //     if (myUser.id == req.user.id) {
-  //       res.send(myUser.servers)
-  //     } else {
-  //       next(new Error("no matching user"))
-  //     }
-  //   }
-  // })
 })
 
 app.listen(port, () => {

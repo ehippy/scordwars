@@ -14,7 +14,7 @@ DISCORD_OAUTH2_CLIENT_ID=""
 DISCORD_OAUTH2_CLIENT_SECRET=""
 
 # Discord Application settings
-DISCORD_CLIENT_ID=""
+DISCORD_CLIENT_ID="" # TODO: is this needed?
 DISCORD_GUILD_ID=""
 DISCORD_BOT_TOKEN=""
 
@@ -32,5 +32,8 @@ Make a `discord/deployConfig.json` file with the right values in it:
 	"guildId": ""
 }
 ```
+
+The files in /disocrd/commands are "slash commands" users use to join and part games. We need to run deployCommands.js to configure those with Discord.
+
 ## To run and debug
 Use VSCode, run `Debug Infight` from the debug panel.

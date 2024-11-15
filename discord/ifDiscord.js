@@ -61,7 +61,7 @@ module.exports = function (db) {
         const channel = await guild.channels.create({
             name: "infight",
             type: ChannelType.GuildText
-        }) //TODO error handling, bro WOT EEF NO CHANAL?
+        }) //TODO error handling, bro WOT EEF NO CHANAL? also, why not text channels? Channel cats?
 
         g.gameChannelId = channel.id
         g.isConnected = true
