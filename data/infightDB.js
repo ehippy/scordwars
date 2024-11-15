@@ -118,10 +118,54 @@ const Game = sequelize.define('Game', {
         allowNull: false,
         defaultValue: 60*12
     }
-    
 })
 Guild.hasMany(Game)
 Game.belongsTo(Guild)
+
+
+const GamePlayer = sequelize.define('GamePlayer', {
+    id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        allowNull: false,
+        primaryKey: true
+    },
+    status: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: 'alive'
+    },
+    health: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 3
+    },
+    actions: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 1
+    },
+    range: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 1
+    },
+    positionX: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    positionY: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    }
+})
+
+Game.hasMany(GamePlayer)
+GamePlayer.belongsTo(Game)
+
+Player.hasMany(GamePlayer)
+GamePlayer.belongsTo(Player)
+
 
 module.exports = {
     init: async function () {
@@ -139,5 +183,6 @@ module.exports = {
     Player: Player,
     Guild: Guild,
     PlayerGuild: PlayerGuild,
-    Game: Game
+    Game: Game,
+    GamePlayer: GamePlayer
 }
