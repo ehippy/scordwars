@@ -13,9 +13,9 @@ POSTGRES_CONN="a postgres db connection string of your making"
 DISCORD_OAUTH2_CLIENT_ID=""
 DISCORD_OAUTH2_CLIENT_SECRET=""
 
-# Discord Application settings
-DISCORD_CLIENT_ID="" # TODO: is this needed?
-DISCORD_GUILD_ID=""
+# Discord Owning Guild info
+DISCORD_CLIENT_ID="" # the Discord Application Id
+DISCORD_GUILD_ID="" # the owning Discord Guild Id
 DISCORD_BOT_TOKEN=""
 
 # Some big, long secret string to hash session tokens with
