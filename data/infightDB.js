@@ -77,6 +77,52 @@ const PlayerGuild = sequelize.define('PlayerGuilds', {
 Guild.belongsToMany(Player, { through: PlayerGuild });
 Player.belongsToMany(Guild, { through: PlayerGuild });
 
+const Game = sequelize.define('Game', {
+    id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        allowNull: false,
+        primaryKey: true
+    },
+    status: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: 'new'
+    },
+    musterTime: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.NOW
+    },
+    startTime: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    minutesPerActionDistro: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 60*12
+    },
+    boardWidth: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 20
+    },
+    boardHeight: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 20
+    },
+    winningPlayer: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 60*12
+    }
+    
+})
+Guild.hasMany(Game)
+Game.belongsTo(Guild)
+
 module.exports = {
     init: async function () {
         try {
@@ -92,5 +138,6 @@ module.exports = {
     },
     Player: Player,
     Guild: Guild,
-    PlayerGuild: PlayerGuild
+    PlayerGuild: PlayerGuild,
+    Game: Game
 }
