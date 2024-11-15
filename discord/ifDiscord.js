@@ -48,20 +48,20 @@ module.exports = function (db) {
         console.log(`Ready! Logged in as ${c.user.tag}`);
     });
 
-    //joined a server
+    //Event when a Discord Guild authorized the application to connect.
     client.on(Events.GuildCreate, async guild => {
         console.log("Joined a new guild: " + guild.name);
-        const g = db.Guild.build({
+        const [g, created] = await db.Guild.upsert({
             id: guild.id,
             name: guild.name,
             icon: guild.icon
-        })
-        await g.save()
+        });
 
+        // then make an infight channel in the discord
         const channel = await guild.channels.create({
             name: "infight",
             type: ChannelType.GuildText
-        })
+        }) //TODO error handling, bro WOT EEF NO CHANAL?
 
         g.gameChannelId = channel.id
         g.isConnected = true
@@ -71,9 +71,18 @@ module.exports = function (db) {
     })
 
     //removed from a server
-    client.on(Events.GuildDelete, guild => {
+    client.on(Events.GuildDelete, async guild => {
         console.log("Left a guild: " + guild.name);
-        //remove from guildArray?
+        
+        const g = await db.Guild.findByPk(guild.id);
+        if (g === null) {
+          console.log('Could no find guild to disconnect');
+        } else {
+            g.gameChannelId = null
+            g.isConnected = false
+            await g.save()
+            console.log('Guild disconnect successful');
+        }
     })
 
     // Log in to Discord with your client's token
