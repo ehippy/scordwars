@@ -1,5 +1,7 @@
 const { Sequelize, DataTypes, Model } = require('sequelize');
-const sequelize = new Sequelize(process.env.POSTGRES_CONN)
+const sequelize = new Sequelize(process.env.POSTGRES_CONN, {
+    logging: false
+})
 
 const Player = sequelize.define('Player', {
     id: {
