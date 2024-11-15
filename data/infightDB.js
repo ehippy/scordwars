@@ -167,6 +167,34 @@ Player.hasMany(GamePlayer)
 GamePlayer.belongsTo(Player)
 
 
+
+const Move = sequelize.define('Move', {
+    id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        allowNull: false,
+        primaryKey: true
+    },
+    action: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    targetPositionX: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    targetPositionY: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+})
+
+Game.hasMany(Move)
+Move.belongsTo(Game)
+
+GamePlayer.hasMany(Move)
+Move.belongsTo(GamePlayer)
+
 module.exports = {
     init: async function () {
         try {
@@ -184,5 +212,6 @@ module.exports = {
     Guild: Guild,
     PlayerGuild: PlayerGuild,
     Game: Game,
-    GamePlayer: GamePlayer
+    GamePlayer: GamePlayer,
+    Move: Move
 }
