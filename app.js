@@ -97,7 +97,7 @@ app.post('/games/:teamId/new', verifyToken, async (req, res) => {
 
   // create the game
   const game = infightDB.Game.build({
-    minutesPerActionDistro: cycleHours+60,
+    minutesPerActionDistro: cycleHours*60,
     boardWidth: boardSize,
     boardHeight: boardSize,
     guildId: req.params.teamId,

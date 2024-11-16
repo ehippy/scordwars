@@ -115,8 +115,7 @@ const Game = sequelize.define('Game', {
     },
     winningPlayer: {
         type: DataTypes.INTEGER,
-        allowNull: false,
-        defaultValue: 60*12
+        allowNull: true
     }
 })
 Guild.hasMany(Game)

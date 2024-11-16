@@ -31,6 +31,9 @@ module.exports = {
 		pg.isOptedInToPlay = true
 		await pg.save()
 
+		// if there's a pending game, add them as a player
+
+
 		return interaction.reply("Bro! You're in!")
 
 	}

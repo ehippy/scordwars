@@ -34,6 +34,8 @@ module.exports = {
 		pg.isOptedInToPlay = false
 		await pg.save()
 
+		// if there's a pending game, remove them from the roster
+
 		return interaction.reply("You're off the roster for the next Infight.")
 
 	}
