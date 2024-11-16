@@ -191,7 +191,8 @@ const Move = sequelize.define('Move', {
 Game.hasMany(Move)
 Move.belongsTo(Game)
 
-GamePlayer.hasMany(Move)
+GamePlayer.hasMany(Move, { as: 'ActingPlayer', foreignKey: 'actingGamePlayerId' })
+GamePlayer.hasMany(Move, { as: 'TargetPlayer', foreignKey: 'targetGamePlayerId' })
 Move.belongsTo(GamePlayer)
 
 module.exports = {
