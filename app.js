@@ -57,13 +57,13 @@ app.post('/games/:teamId/new', verifyToken, async (req, res) => {
   }
 
   // check if there's an active game
-  const g = await infightDB.Guild.findByPk(req.params.teamId);
-  if (g === null) {
+  const guild = await infightDB.Guild.findByPk(req.params.teamId);
+  if (guild === null) {
     res.send(new Error("Invalid teamId", { statusCode: 404 }))
     next()
   }
 
-  if (g.currentGameId) {
+  if (guild.currentGameId) {
     res.send(new Error("Already a game in progress", { statusCode: 409 }))
     next()
   }
@@ -96,17 +96,28 @@ app.post('/games/:teamId/new', verifyToken, async (req, res) => {
   // get all the relevant active players...?
 
   // create the game
+  const startDate = new Date()
+  startDate.setHours(startDate.getHours() + 2)
+
   const game = infightDB.Game.build({
     minutesPerActionDistro: cycleHours*60,
     boardWidth: boardSize,
     boardHeight: boardSize,
-    guildId: req.params.teamId,
-
-  });
+    GuildId: req.params.teamId,
+    startTime: startDate,
+  })
 
   await game.save()
-  console.log('created game ' + game.id)
+  console.log('created game ' + game.id, game)
+  
+  //set the current game on the Guild
+  guild.currentGameId = game.id
+  await guild.save()
+  
+
   // send some hype abouut the muster period)
+
+
 
   res.send(game)
 })
