@@ -24,16 +24,7 @@ SESSION_SECRET=""
 
 
 ## deploy commands
-Make a `discord/deployConfig.json` file with the right values in it: 
-```
-{
-	"token": "",
-	"clientId": "",
-	"guildId": ""
-}
-```
-
-The files in /disocrd/commands are "slash commands" users use to join and part games. We need to run deployCommands.js to configure those with Discord.
+The files in /disocrd/commands are "slash commands" users use to join and depart games. We need to run deployCommands.js to configure those with Discord. There's a VSCode configuration to run these included as, "Deploy Slash Commands to Discord".
 
 ## To run and debug
 Use VSCode, run `Debug Infight` from the debug panel.
