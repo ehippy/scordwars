@@ -114,10 +114,26 @@ app.post('/games/:teamId/new', verifyToken, async (req, res) => {
   guild.currentGameId = game.id
   await guild.save()
   
+  //find all opted-in players and add them to the game
+  const optedInGuildMembers = infightDB.PlayerGuild.findAll({where: {
+    guildId: req.params.teamId,
+    isOptedInToPlay: true
+  }})
 
   // send some hype abouut the muster period)
+  const GamePlayersToCreate = []
+  optedInGuildMembers.forEach(gm => {
+    const gamePlayer = infightDB.GamePlayer.build({
+      GameId: game.id,
+      PlayerId: gm.PlayerId
+    })
+    GamePlayersToCreate.push(gamePlayer)
+  });
 
+  const playerCreateResult = await infightDB.GamePlayer.bulkCreate(GamePlayersToCreate)
 
+  const guildChannel = ifDisco.channels.cache.get(guild.gameChannelId)
+  guildChannel.send("Game created!")
 
   res.send(game)
 })
@@ -129,5 +145,5 @@ app.post('/games/:teamId/new', verifyToken, async (req, res) => {
 // How to run the game CRON?
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
+  console.log(`Infight server listening on port ${port}`)
 })
