@@ -129,7 +129,7 @@ app.post('/games/:teamId/new', verifyToken, async (req, res) => {
       GamePlayersToCreate.push(gamePlayer)
     });
 
-    const playerCreateResult = await infightDB.GamePlayer.bulkCreate(GamePlayersToCreate, { transaction: t, validate:true })
+    const playerCreateResult = await infightDB.GamePlayer.bulkCreate(GamePlayersToCreate, { transaction: t, validate: true })
 
     t.commit()
 
@@ -158,7 +158,17 @@ app.get('/games/:teamId/:gameId', async (req, res) => {
     return res.status(404).send(new Error("Invalid gameId"))
   }
 
-  const game = await infightDB.Game.findByPk(req.params.gameId, { include: { all: true } });
+  const game = await infightDB.Game.findByPk(req.params.gameId, {
+    include: [{
+      model: infightDB.GamePlayer,
+      include: {
+        model: infightDB.Player
+      }
+    }, {
+      model: infightDB.Guild
+    }
+    ]
+  });
   if (!game) {
     return res.status(404).send(new Error("Game not found"))
   }
