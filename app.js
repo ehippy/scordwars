@@ -46,26 +46,22 @@ app.get('/myTeams', verifyToken, async (req, res) => {
 app.post('/games/:teamId/new', verifyToken, async (req, res) => {
   const player = await infightDB.Player.findByPk(req.user.id)
   if (player === null) {
-    res.send(new Error("User not logged in", { statusCode: 404 }))
-    next()
+    return res.status(404).send(new Error("User not logged in"))
   }
 
   //check if we got a good id
   if (!req.params.teamId) {
-    res.send(new Error("Invalid teamId", { statusCode: 404 }))
-    next()
+    return res.status(404).send(new Error("Invalid teamId"))
   }
 
   // check if there's an active game
   const guild = await infightDB.Guild.findByPk(req.params.teamId);
   if (guild === null) {
-    res.send(new Error("Invalid teamId", { statusCode: 404 }))
-    next()
+    return res.status(404).send(new Error("Invalid teamId"))
   }
 
   if (guild.currentGameId) {
-    res.send(new Error("Already a game in progress", { statusCode: 409 }))
-    next()
+    return res.status(409).send(new Error("Already a game in progress"))
   }
 
   // check to make sure the user is a member of the server
@@ -76,21 +72,18 @@ app.post('/games/:teamId/new', verifyToken, async (req, res) => {
     }
   })
   if (matchingGuilds.count == 0) {
-    res.send(new Error("Player not a member of that team", { statusCode: 409 }))
-    next()
+    return res.send(new Error("Player not a member of that team", { statusCode: 409 }))
   }
 
   // check for input size, cycle time, 
   const cycleHours = req.body.cycleHours;
   if (!cycleHours || isNaN(cycleHours) || cycleHours < 1 || cycleHours > 24) {
-    res.send(new Error("cycleHours is not valid", { statusCode: 400 }))
-    next()
+    return res.send(new Error("cycleHours is not valid", { statusCode: 400 }))
   }
 
   const boardSize = req.body.boardSize;
   if (!boardSize || isNaN(boardSize) || boardSize < 10 || boardSize > 100) {
-    res.send(new Error("boardSize is not valid", { statusCode: 400 }))
-    next()
+    return res.send(new Error("boardSize is not valid", { statusCode: 400 }))
   }
 
   // get all the relevant active players...?
@@ -100,7 +93,7 @@ app.post('/games/:teamId/new', verifyToken, async (req, res) => {
   startDate.setHours(startDate.getHours() + 2)
 
   const game = infightDB.Game.build({
-    minutesPerActionDistro: cycleHours*60,
+    minutesPerActionDistro: cycleHours * 60,
     boardWidth: boardSize,
     boardHeight: boardSize,
     GuildId: req.params.teamId,
@@ -109,16 +102,18 @@ app.post('/games/:teamId/new', verifyToken, async (req, res) => {
 
   await game.save()
   console.log('created game ' + game.id, game)
-  
+
   //set the current game on the Guild
   guild.currentGameId = game.id
   await guild.save()
-  
+
   //find all opted-in players and add them to the game
-  const optedInGuildMembers = infightDB.PlayerGuild.findAll({where: {
-    guildId: req.params.teamId,
-    isOptedInToPlay: true
-  }})
+  const optedInGuildMembers = await infightDB.PlayerGuild.findAll({
+    where: {
+      guildId: req.params.teamId,
+      isOptedInToPlay: true
+    }
+  })
 
   // send some hype abouut the muster period)
   const GamePlayersToCreate = []
@@ -137,6 +132,25 @@ app.post('/games/:teamId/new', verifyToken, async (req, res) => {
 
   res.send(game)
 })
+
+
+app.get('/games/:teamId/:gameId', async (req, res) => {
+
+  //check if we got a good id
+  if (!req.params.teamId) {
+    return res.status(404).send(new Error("Invalid teamId"))
+  }
+
+  //check if we got a good id
+  if (!req.params.gameId) {
+    return res.status(404).send(new Error("Invalid gameId"))
+  }
+
+  const game = await infightDB.Game.findByPk(req.params.gameId, { include: { all: true } });
+  res.send(game)
+})
+
+
 
 // Endpoints needed
 // Games: Create, Get

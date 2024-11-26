@@ -101,7 +101,7 @@ const Game = sequelize.define('Game', {
     minutesPerActionDistro: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        defaultValue: 60*12
+        defaultValue: 60 * 12
     },
     boardWidth: {
         type: DataTypes.INTEGER,
@@ -118,8 +118,8 @@ const Game = sequelize.define('Game', {
         allowNull: true
     }
 })
-Guild.hasMany(Game)
-Game.belongsTo(Guild)
+Guild.hasMany(Game, {foreignKey: 'GuildId'})
+Game.belongsTo(Guild, {foreignKey: 'GuildId'})
 
 
 const GamePlayer = sequelize.define('GamePlayer', {
