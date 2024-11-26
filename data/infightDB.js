@@ -208,6 +208,8 @@ module.exports = {
         await sequelize.sync({ alter: true });
         console.log("All tables were synchronized successfully.");
     },
+    sequelize: sequelize,
+    
     Player: Player,
     Guild: Guild,
     PlayerGuild: PlayerGuild,
