@@ -86,7 +86,7 @@ app.post('/games/:teamId/new', verifyToken, async (req, res) => {
     }
 
     const boardSize = req.body.boardSize;
-    if (!boardSize || isNaN(boardSize) || boardSize < 10 || boardSize > 100) {
+    if (!boardSize || isNaN(boardSize) || boardSize < 5 || boardSize > 100) {
       return res.send(new Error("boardSize is not valid", { statusCode: 400 }))
     }
 
@@ -276,6 +276,50 @@ app.post('/games/:teamId/:gameId/start', async (req, res) => {
 
   const guildChannel = ifDisco.channels.cache.get(guild.gameChannelId)
   guildChannel.send("Game " + req.params.gameId + " started!")
+
+  res.send(game)
+})
+app.post('/games/:teamId/:gameId/tick', async (req, res) => {
+  //TODO: this needs AUTH consideration
+  //check if we got a good id
+  if (!req.params.teamId) {
+    return res.status(404).send("Invalid teamId")
+  }
+
+  //check if we got a good id
+  if (!req.params.gameId) {
+    return res.status(404).send("Invalid gameId")
+  }
+
+  const game = await infightDB.Game.findByPk(req.params.gameId, { include: { all: true } });
+  if (!game) {
+    return res.status(404).send("Invalid gameId")
+  }
+
+  if (game.status != 'active') {
+    return res.status(400).send("Game is not ready to be ticked")
+  }
+
+  const guild = await infightDB.Guild.findByPk(req.params.teamId)
+  if (!guild) {
+    return res.status(404).send("Invalid teamId")
+  }
+
+  try {
+    const thisMoment = new Date()
+    const nextTick = new Date(+new Date(thisMoment) + game.minutesPerActionDistro * 60 * 1000)
+    game.nextTickTime = nextTick
+    const gameSaved = await game.save()
+
+    const [results, metadata] = await infightDB.sequelize.query('UPDATE "GamePlayers" SET actions = actions + 1 WHERE "GameId" = ?', {
+      replacements: [game.id]
+    })
+  } catch (error) {
+    return res.status(400).send("Game tick failed")
+  }
+
+  const guildChannel = ifDisco.channels.cache.get(guild.gameChannelId)
+  guildChannel.send("Game " + req.params.gameId + " has distributed new action points!")
 
   res.send(game)
 })
