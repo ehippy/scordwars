@@ -364,6 +364,8 @@ app.post('/games/:teamId/:gameId/act', verifyToken,  async (req, res) => {
     return res.status(404).send("Invalid teamId")
   }
 
+  const guildChannel = ifDisco.channels.cache.get(guild.gameChannelId)
+
   // get current GamePlayer
   var gp = null
   for (let i = 0; i < game.GamePlayers.length; i++) {
@@ -405,6 +407,9 @@ app.post('/games/:teamId/:gameId/act', verifyToken,  async (req, res) => {
       gp.actions -= 1
 
       await gp.save()
+
+      guildChannel.send("<@" + gp.PlayerId + "> moved their piece!")
+
       return res.send("Moved!")
     }
 
@@ -414,9 +419,6 @@ app.post('/games/:teamId/:gameId/act', verifyToken,  async (req, res) => {
   } catch (error) {
     return res.status(400).send("Action failed")
   }
-
-  const guildChannel = ifDisco.channels.cache.get(guild.gameChannelId)
-  guildChannel.send("Game " + req.params.gameId + " has distributed new action points!")
 
   res.send(game)
 })
