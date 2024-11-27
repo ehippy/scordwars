@@ -402,6 +402,11 @@ app.post('/games/:teamId/:gameId/act', verifyToken,  async (req, res) => {
         }
       }
       
+      if (targetX < currentX - 1 || targetX > currentX + 1 || targetY < currentY - 1 || targetY > currentY + 1) {
+        return res.status(400).send("That move is out of range")
+      }
+
+      
       gp.positionX = targetX
       gp.positionY = targetY
       gp.actions -= 1
@@ -412,7 +417,6 @@ app.post('/games/:teamId/:gameId/act', verifyToken,  async (req, res) => {
 
       return res.send("Moved!")
     }
-
 
     return res.status(400).send("Not implemented")
     
