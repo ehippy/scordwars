@@ -313,8 +313,8 @@ app.post('/games/:teamId/:gameId/tick', async (req, res) => {
     game.nextTickTime = nextTick
     const gameSaved = await game.save()
 
-    const [results, metadata] = await infightDB.sequelize.query('UPDATE "GamePlayers" SET actions = actions + 1 WHERE "GameId" = ?', {
-      replacements: [game.id]
+    const [results, metadata] = await infightDB.sequelize.query('UPDATE "GamePlayers" SET actions = actions + 1 WHERE "GameId" = ? AND status = ?', {
+      replacements: [game.id, 'alive']
     })
   } catch (error) {
     return res.status(400).send("Game tick failed")
@@ -452,12 +452,14 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
         }
       }
       if (!targetGamePlayer) {
-        return res.status(400).send("No plaeyr at that target")
+        return res.status(400).send("No player at that position")
       }
 
       targetGamePlayer.health -= 1
       if (targetGamePlayer.health < 1) {
         targetGamePlayer.status = 'dead'
+        targetGamePlayer.positionX = null
+        targetGamePlayer.positionY = null
       }
       await targetGamePlayer.save()
 
