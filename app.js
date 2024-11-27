@@ -325,6 +325,103 @@ app.post('/games/:teamId/:gameId/tick', async (req, res) => {
 })
 
 
+app.post('/games/:teamId/:gameId/act', verifyToken,  async (req, res) => {
+  
+  const action = req.body.action
+  const targetX = req.body.targetX
+  const targetY = req.body.targetY
+
+  if (!['move', 'shoot', 'give', 'upgrade'].includes(action)) {
+    return res.status(400).send("Action '" + action + "' not supported")
+  }
+
+  const player = await infightDB.Player.findByPk(req.user.id)
+  if (player === null) {
+    return res.status(404).send("User not logged in")
+  }
+
+  //check if we got a good id
+  if (!req.params.teamId) {
+    return res.status(404).send("Invalid teamId")
+  }
+
+  //check if we got a good id
+  if (!req.params.gameId) {
+    return res.status(404).send("Invalid gameId")
+  }
+
+  const game = await infightDB.Game.findByPk(req.params.gameId, { include: { all: true } });
+  if (!game) {
+    return res.status(404).send("Invalid gameId")
+  }
+
+  if (game.status != 'active') {
+    return res.status(400).send("Game is not active")
+  }
+
+  const guild = await infightDB.Guild.findByPk(req.params.teamId)
+  if (!guild) {
+    return res.status(404).send("Invalid teamId")
+  }
+
+  // get current GamePlayer
+  var gp = null
+  for (let i = 0; i < game.GamePlayers.length; i++) {
+    const foundGp = game.GamePlayers[i];
+    if (foundGp.PlayerId == player.id) {
+      gp = foundGp
+    }
+  }
+  if (!gp) {
+    return res.status(404).send("You aren't in this game")
+  }
+
+  if (gp.actions < 1) {
+    return res.status(400).send("You don't have enough AP")
+  }
+
+  if (gp.status != 'alive') {
+    return res.status(400).send("You're not alive.")
+  }
+
+  try {
+    if (action == 'move') {
+      const currentX = gp.positionX
+      const currentY = gp.positionY
+
+      if (targetX < 0 || targetX >= game.boardWidth || targetY < 0 || targetY > game.boardHeight - 1) {
+        return res.status(400).send("Move is off the board")
+      }
+
+      for (let i = 0; i < game.GamePlayers.length; i++) {
+        const somePlayer = game.GamePlayers[i];
+        if (somePlayer.positionX == targetX && somePlayer.positionY == targetY) {
+          return res.status(400).send("A player is already in that space")
+        }
+      }
+      
+      gp.positionX = targetX
+      gp.positionY = targetY
+      gp.actions -= 1
+
+      await gp.save()
+      return res.send("Moved!")
+    }
+
+
+    return res.status(400).send("Not implemented")
+    
+  } catch (error) {
+    return res.status(400).send("Action failed")
+  }
+
+  const guildChannel = ifDisco.channels.cache.get(guild.gameChannelId)
+  guildChannel.send("Game " + req.params.gameId + " has distributed new action points!")
+
+  res.send(game)
+})
+
+
 // Endpoints needed
 // Games: Create, Get
 // Moves: Create
