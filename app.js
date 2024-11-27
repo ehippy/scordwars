@@ -166,6 +166,8 @@ app.get('/games/:teamId/:gameId', async (req, res) => {
       }
     }, {
       model: infightDB.Guild
+    }, {
+      model: infightDB.Move
     }
     ]
   });
@@ -387,9 +389,10 @@ app.post('/games/:teamId/:gameId/act', verifyToken,  async (req, res) => {
   }
 
   try {
+    const currentX = gp.positionX
+    const currentY = gp.positionY
+
     if (action == 'move') {
-      const currentX = gp.positionX
-      const currentY = gp.positionY
 
       if (targetX < 0 || targetX >= game.boardWidth || targetY < 0 || targetY > game.boardHeight - 1) {
         return res.status(400).send("Move is off the board")
@@ -405,13 +408,21 @@ app.post('/games/:teamId/:gameId/act', verifyToken,  async (req, res) => {
       if (targetX < currentX - 1 || targetX > currentX + 1 || targetY < currentY - 1 || targetY > currentY + 1) {
         return res.status(400).send("That move is out of range")
       }
-
       
       gp.positionX = targetX
       gp.positionY = targetY
       gp.actions -= 1
 
       await gp.save()
+
+      const move = infightDB.Move.build({
+        GameId: game.id,
+        action: action,
+        targetPositionX: targetX,
+        targetPositionY: targetY,
+        actingGamePlayerId: gp.id
+      })
+      await move.save()
 
       guildChannel.send("<@" + gp.PlayerId + "> moved their piece!")
 
