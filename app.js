@@ -327,8 +327,8 @@ app.post('/games/:teamId/:gameId/tick', async (req, res) => {
 })
 
 
-app.post('/games/:teamId/:gameId/act', verifyToken,  async (req, res) => {
-  
+app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
+
   const action = req.body.action
   const targetX = req.body.targetX
   const targetY = req.body.targetY
@@ -388,14 +388,31 @@ app.post('/games/:teamId/:gameId/act', verifyToken,  async (req, res) => {
     return res.status(400).send("You're not alive.")
   }
 
+  if (Number.isInteger(targetX) && Number.isInteger(targetY)) {
+    if (targetX < 0 || targetX >= game.boardWidth || targetY < 0 || targetY > game.boardHeight - 1) {
+      return res.status(400).send("Action is off the board")
+    }
+  }
+
+  const move = infightDB.Move.build({
+    GameId: game.id,
+    action: action,
+    targetPositionX: targetX,
+    targetPositionY: targetY,
+    actingGamePlayerId: gp.id
+  })
+
   try {
     const currentX = gp.positionX
     const currentY = gp.positionY
 
     if (action == 'move') {
+      if (Number.isNaN(targetX) || Number.isNaN(targetY)) {
+        return res.status(400).send("Target is not numeric")
+      }
 
-      if (targetX < 0 || targetX >= game.boardWidth || targetY < 0 || targetY > game.boardHeight - 1) {
-        return res.status(400).send("Move is off the board")
+      if (!isInRange(1, targetX, targetY, currentX, currentY)) {
+        return res.status(400).send("That move is out of range")
       }
 
       for (let i = 0; i < game.GamePlayers.length; i++) {
@@ -404,24 +421,13 @@ app.post('/games/:teamId/:gameId/act', verifyToken,  async (req, res) => {
           return res.status(400).send("A player is already in that space")
         }
       }
-      
-      if (targetX < currentX - 1 || targetX > currentX + 1 || targetY < currentY - 1 || targetY > currentY + 1) {
-        return res.status(400).send("That move is out of range")
-      }
-      
+
+
       gp.positionX = targetX
       gp.positionY = targetY
       gp.actions -= 1
 
       await gp.save()
-
-      const move = infightDB.Move.build({
-        GameId: game.id,
-        action: action,
-        targetPositionX: targetX,
-        targetPositionY: targetY,
-        actingGamePlayerId: gp.id
-      })
       await move.save()
 
       guildChannel.send("<@" + gp.PlayerId + "> moved their piece!")
@@ -429,8 +435,47 @@ app.post('/games/:teamId/:gameId/act', verifyToken,  async (req, res) => {
       return res.send("Moved!")
     }
 
-    return res.status(400).send("Not implemented")
-    
+    if (action == 'shoot') {
+      if (Number.isNaN(targetX) || Number.isNaN(targetY)) {
+        return res.status(400).send("Target is not numeric")
+      }
+
+      if (!isInRange(1, targetX, targetY, currentX, currentY)) {
+        return res.status(400).send("That target is out of range")
+      }
+
+      let targetGamePlayer = null;
+      for (let i = 0; i < game.GamePlayers.length; i++) {
+        const somePlayer = game.GamePlayers[i];
+        if (somePlayer.positionX == targetX && somePlayer.positionY == targetY) {
+          targetGamePlayer = somePlayer
+        }
+      }
+      if (!targetGamePlayer) {
+        return res.status(400).send("No plaeyr at that target")
+      }
+
+      targetGamePlayer.health -= 1
+      if (targetGamePlayer.health < 1) {
+        targetGamePlayer.status = 'dead'
+      }
+      await targetGamePlayer.save()
+
+      gp.actions -= 1
+      await gp.save()
+
+      move.targetGamePlayerId = targetGamePlayer.id
+      await move.save()
+
+      guildChannel.send("<@" + gp.PlayerId + "> *shot* <@" + targetGamePlayer.PlayerId + ">, reducing their health to " + targetGamePlayer.health + "!")
+
+      //TODO: check if game is over
+
+      return res.send("Shot!")
+    }
+
+    return res.status(500).send("Not implemented")
+
   } catch (error) {
     return res.status(400).send("Action failed")
   }
@@ -438,6 +483,14 @@ app.post('/games/:teamId/:gameId/act', verifyToken,  async (req, res) => {
   res.send(game)
 })
 
+
+function isInRange(range, targetX, targetY, currentX, currentY) {
+
+  if (targetX < currentX - range || targetX > currentX + range || targetY < currentY - range || targetY > currentY + range) {
+    return false
+  }
+  return true
+}
 
 // Endpoints needed
 // Games: Create, Get
