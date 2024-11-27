@@ -98,6 +98,10 @@ const Game = sequelize.define('Game', {
         type: DataTypes.DATE,
         allowNull: true
     },
+    nextTickTime: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
     minutesPerActionDistro: {
         type: DataTypes.INTEGER,
         allowNull: false,
@@ -209,7 +213,7 @@ module.exports = {
         console.log("All tables were synchronized successfully.");
     },
     sequelize: sequelize,
-    
+
     Player: Player,
     Guild: Guild,
     PlayerGuild: PlayerGuild,
