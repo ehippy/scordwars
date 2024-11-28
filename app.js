@@ -430,16 +430,31 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
   try {
 
     if (action == 'upgrade') {
-      if (gp.range >= 3) {
-        return res.status(400).send("Range is already at maximum (3)")
+      if (gp.actions < 3) {
+        return res.status(400).send("You don't have enough AP")
       }
       gp.range += 1
-      gp.actions -= 1
+      gp.actions -= 3
 
       await gp.save()
       await move.save()
 
       guildChannel.send("<@" + gp.PlayerId + "> 🔧 **upgraded** their range to " + gp.range + "!")
+
+      return res.send("Upgraded!")
+    }
+
+    if (action == 'heal') {
+      if (gp.actions < 3) {
+        return res.status(400).send("You don't have enough AP")
+      }
+      gp.health += 1
+      gp.actions -= 3
+
+      await gp.save()
+      await move.save()
+
+      guildChannel.send("<@" + gp.PlayerId + "> ❤️ **healed** to **" + gp.health + "**!")
 
       return res.send("Upgraded!")
     }
@@ -485,10 +500,13 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
       }
 
       if (gp.health < 2) {
-        return res.status(400).send("You don't have enough health to give some away")
+        return res.status(400).send("You don't have enough health to give")
       }
 
       targetGamePlayer.health += 1
+      if (targetGamePlayer.health == 1) {
+        targetGamePlayer.status = 'alive'
+      }
       gp.health -= 1
 
       await gp.save()
@@ -496,7 +514,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
       move.targetGamePlayerId = targetGamePlayer.id
       await move.save()
 
-      guildChannel.send("<@" + gp.PlayerId + "> (" + gp.health + " HP) 💌 gave an HP to <@" + targetGamePlayer.PlayerId + "> (" + targetGamePlayer.health + " AP)!")
+      guildChannel.send("<@" + gp.PlayerId + "> (" + gp.health + " HP) 💌 gave an HP to <@" + targetGamePlayer.PlayerId + "> (" + targetGamePlayer.health + " HP)!")
 
       return res.send("Gave HP!")
     }
@@ -510,8 +528,9 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
       targetGamePlayer.health -= 1
       if (targetGamePlayer.health < 1) {
         targetGamePlayer.status = 'dead'
-        targetGamePlayer.positionX = null
-        targetGamePlayer.positionY = null
+        const stolenHP = targetGamePlayer.actions
+        gp.actions += stolenHP  // give the killer the AP of the killed
+        targetGamePlayer.actions = 0
       }
       await targetGamePlayer.save()
 
@@ -524,7 +543,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
       if (targetGamePlayer.health > 0) {
         guildChannel.send("<@" + gp.PlayerId + "> **💥shot💥** <@" + targetGamePlayer.PlayerId + ">, reducing their health to **" + targetGamePlayer.health + "**!")
       } else {
-        guildChannel.send("<@" + gp.PlayerId + "> **☠️ ELIMINATED ☠️** <@" + targetGamePlayer.PlayerId + ">!")
+        guildChannel.send("<@" + gp.PlayerId + "> **☠️ ELIMINATED ☠️** <@" + targetGamePlayer.PlayerId + ">" + stolenHP ? " and stole their " + stolenHP + "AP!" : "!")
       }
 
       //check if game is over
