@@ -417,7 +417,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
 
       for (let i = 0; i < game.GamePlayers.length; i++) {
         const somePlayer = game.GamePlayers[i];
-        if (somePlayer.positionX == targetX && somePlayer.positionY == targetY) {
+        if (somePlayer.status == 'alive' && somePlayer.positionX == targetX && somePlayer.positionY == targetY) {
           return res.status(400).send("A player is already in that space")
         }
       }
@@ -447,7 +447,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
       let targetGamePlayer = null;
       for (let i = 0; i < game.GamePlayers.length; i++) {
         const somePlayer = game.GamePlayers[i];
-        if (somePlayer.positionX == targetX && somePlayer.positionY == targetY) {
+        if (somePlayer.status == 'alive' && somePlayer.positionX == targetX && somePlayer.positionY == targetY) {
           targetGamePlayer = somePlayer
         }
       }
@@ -471,7 +471,27 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
 
       guildChannel.send("<@" + gp.PlayerId + "> *shot* <@" + targetGamePlayer.PlayerId + ">, reducing their health to " + targetGamePlayer.health + "!")
 
-      //TODO: check if game is over
+      //check if game is over
+      let countAlive = 0
+      for (let i = 0; i < game.GamePlayers.length; i++) {
+        const somePlayer = game.GamePlayers[i];
+        if (somePlayer.status == 'alive') {
+          countAlive++
+        }
+      }
+      if (countAlive == 1) {
+        game.status = 'won'
+        game.winningPlayerId = gp.id
+        await game.save()
+        
+        guild.currentGameId = null
+        await guild.save()
+
+        guildChannel.send("<@" + gp.PlayerId + "> **_WON THE GAME!!_**")
+
+        //TODO: after action report
+      }
+
 
       return res.send("Shot!")
     }
