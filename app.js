@@ -402,26 +402,52 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
     actingGamePlayerId: gp.id
   })
 
+  //for aimed actions, check range and target values
+  const currentX = gp.positionX
+  const currentY = gp.positionY
+  if (['move', 'shoot', 'give'].includes(action)) {
+    if (Number.isNaN(targetX) || Number.isNaN(targetY)) {
+      return res.status(400).send("Target is not numeric")
+    }
+
+    let testRange = 1
+    if (action != 'move') testRange = gp.range
+
+    if (targetX < currentX - testRange || targetX > currentX + testRange || targetY < currentY - testRange || targetY > currentY + testRange) {
+      return res.status(400).send("That is out of range")
+    }
+  }
+
+  //find any living player in the target space
+  let targetGamePlayer = null;
+  for (let i = 0; i < game.GamePlayers.length; i++) {
+    const somePlayer = game.GamePlayers[i];
+    if (somePlayer.status == 'alive' && somePlayer.positionX == targetX && somePlayer.positionY == targetY) {
+      targetGamePlayer = somePlayer
+    }
+  }
+
   try {
-    const currentX = gp.positionX
-    const currentY = gp.positionY
+
+    if (action == 'upgrade') {
+      if (gp.range >= 3) {
+        return res.status(400).send("Range is already at maximum (3)")
+      }
+      gp.range += 1
+      gp.actions -= 1
+
+      await gp.save()
+      await move.save()
+
+      guildChannel.send("<@" + gp.PlayerId + "> 🔧 **upgraded** their range to " + gp.range + "!")
+
+      return res.send("Upgraded!")
+    }
 
     if (action == 'move') {
-      if (Number.isNaN(targetX) || Number.isNaN(targetY)) {
-        return res.status(400).send("Target is not numeric")
+      if (targetGamePlayer != null) {
+        return res.status(400).send("A player is already in that space")
       }
-
-      if (!isInRange(1, targetX, targetY, currentX, currentY)) {
-        return res.status(400).send("That move is out of range")
-      }
-
-      for (let i = 0; i < game.GamePlayers.length; i++) {
-        const somePlayer = game.GamePlayers[i];
-        if (somePlayer.status == 'alive' && somePlayer.positionX == targetX && somePlayer.positionY == targetY) {
-          return res.status(400).send("A player is already in that space")
-        }
-      }
-
 
       gp.positionX = targetX
       gp.positionY = targetY
@@ -430,27 +456,31 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
       await gp.save()
       await move.save()
 
-      guildChannel.send("<@" + gp.PlayerId + "> moved their piece!")
+      guildChannel.send("<@" + gp.PlayerId + "> 🏃 moved!")
 
       return res.send("Moved!")
     }
 
+    if (action == 'give') {
+      if (targetGamePlayer == null) {
+        return res.status(400).send("There's no player at that target to gift")
+      }
+
+      targetGamePlayer.actions += 1
+      gp.actions -= 1
+
+      await gp.save()
+      await targetGamePlayer.save()
+      move.targetGamePlayerId = targetGamePlayer.id
+      await move.save()
+
+      guildChannel.send("<@" + gp.PlayerId + "> (" + gp.actions + " AP) 🤝 gave an AP to <@" + targetGamePlayer.PlayerId + "> (" + targetGamePlayer.actions + " AP)!")
+
+      return res.send("Gave!")
+    }
+
     if (action == 'shoot') {
-      if (Number.isNaN(targetX) || Number.isNaN(targetY)) {
-        return res.status(400).send("Target is not numeric")
-      }
 
-      if (!isInRange(1, targetX, targetY, currentX, currentY)) {
-        return res.status(400).send("That target is out of range")
-      }
-
-      let targetGamePlayer = null;
-      for (let i = 0; i < game.GamePlayers.length; i++) {
-        const somePlayer = game.GamePlayers[i];
-        if (somePlayer.status == 'alive' && somePlayer.positionX == targetX && somePlayer.positionY == targetY) {
-          targetGamePlayer = somePlayer
-        }
-      }
       if (!targetGamePlayer) {
         return res.status(400).send("No player at that position")
       }
@@ -469,7 +499,11 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
       move.targetGamePlayerId = targetGamePlayer.id
       await move.save()
 
-      guildChannel.send("<@" + gp.PlayerId + "> *shot* <@" + targetGamePlayer.PlayerId + ">, reducing their health to " + targetGamePlayer.health + "!")
+      if (targetGamePlayer.health > 0) {
+        guildChannel.send("<@" + gp.PlayerId + "> **💥shot💥** <@" + targetGamePlayer.PlayerId + ">, reducing their health to **" + targetGamePlayer.health + "**!")
+      } else {
+        guildChannel.send("<@" + gp.PlayerId + "> **☠️ ELIMINATED ☠️** <@" + targetGamePlayer.PlayerId + ">!")
+      }
 
       //check if game is over
       let countAlive = 0
@@ -483,7 +517,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
         game.status = 'won'
         game.winningPlayerId = gp.id
         await game.save()
-        
+
         guild.currentGameId = null
         await guild.save()
 
@@ -505,14 +539,6 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
   res.send(game)
 })
 
-
-function isInRange(range, targetX, targetY, currentX, currentY) {
-
-  if (targetX < currentX - range || targetX > currentX + range || targetY < currentY - range || targetY > currentY + range) {
-    return false
-  }
-  return true
-}
 
 // Endpoints needed
 // Games: Create, Get
