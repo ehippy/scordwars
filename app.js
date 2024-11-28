@@ -333,7 +333,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
   const targetX = req.body.targetX
   const targetY = req.body.targetY
 
-  if (!['move', 'shoot', 'give', 'upgrade'].includes(action)) {
+  if (!['move', 'shoot', 'giveAP', 'giveHP', 'upgrade', 'heal'].includes(action)) {
     return res.status(400).send("Action '" + action + "' not supported")
   }
 
@@ -405,7 +405,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
   //for aimed actions, check range and target values
   const currentX = gp.positionX
   const currentY = gp.positionY
-  if (['move', 'shoot', 'give'].includes(action)) {
+  if (['move', 'shoot', 'giveAP', 'giveHP'].includes(action)) {
     if (Number.isNaN(targetX) || Number.isNaN(targetY)) {
       return res.status(400).send("Target is not numeric")
     }
@@ -461,7 +461,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
       return res.send("Moved!")
     }
 
-    if (action == 'give') {
+    if (action == 'giveAP') {
       if (targetGamePlayer == null) {
         return res.status(400).send("There's no player at that target to gift")
       }
@@ -476,7 +476,29 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
 
       guildChannel.send("<@" + gp.PlayerId + "> (" + gp.actions + " AP) 🤝 gave an AP to <@" + targetGamePlayer.PlayerId + "> (" + targetGamePlayer.actions + " AP)!")
 
-      return res.send("Gave!")
+      return res.send("Gave AP!")
+    }
+
+    if (action == 'giveHP') {
+      if (targetGamePlayer == null) {
+        return res.status(400).send("There's no player at that target to gift")
+      }
+
+      if (gp.health < 2) {
+        return res.status(400).send("You don't have enough health to give some away")
+      }
+
+      targetGamePlayer.health += 1
+      gp.health -= 1
+
+      await gp.save()
+      await targetGamePlayer.save()
+      move.targetGamePlayerId = targetGamePlayer.id
+      await move.save()
+
+      guildChannel.send("<@" + gp.PlayerId + "> (" + gp.health + " HP) 💌 gave an HP to <@" + targetGamePlayer.PlayerId + "> (" + targetGamePlayer.health + " AP)!")
+
+      return res.send("Gave HP!")
     }
 
     if (action == 'shoot') {
