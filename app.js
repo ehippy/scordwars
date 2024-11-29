@@ -1,4 +1,5 @@
 console.log("Starting scordwards server")
+const { Op } = require('sequelize');
 
 require('dotenv').config()
 const settings = {
@@ -80,9 +81,9 @@ app.post('/games/:teamId/new', verifyToken, async (req, res) => {
     }
 
     // check for input size, cycle time, 
-    const cycleHours = req.body.cycleHours;
-    if (!cycleHours || isNaN(cycleHours) || cycleHours < 1 || cycleHours > 24) {
-      return res.send(new Error("cycleHours is not valid", { statusCode: 400 }))
+    const cycleMinutes = req.body.cycleMinutes;
+    if (!cycleMinutes || isNaN(cycleMinutes) || cycleMinutes < 1 || cycleMinutes > 9999) {
+      return res.send(new Error("cycleMinutes is not valid", { statusCode: 400 }))
     }
 
     const boardSize = req.body.boardSize;
@@ -97,7 +98,7 @@ app.post('/games/:teamId/new', verifyToken, async (req, res) => {
     startDate.setHours(startDate.getHours() + 2)
 
     const game = infightDB.Game.build({
-      minutesPerActionDistro: cycleHours * 60,
+      minutesPerActionDistro: cycleMinutes,
       boardWidth: boardSize,
       boardHeight: boardSize,
       GuildId: req.params.teamId,
@@ -281,30 +282,31 @@ app.post('/games/:teamId/:gameId/start', async (req, res) => {
 
   res.send(game)
 })
-app.post('/games/:teamId/:gameId/tick', async (req, res) => {
-  //TODO: this needs AUTH consideration
+
+async function doTick(teamId, gameId) {
+  console.log("Doing game tick for " + gameId)
   //check if we got a good id
-  if (!req.params.teamId) {
-    return res.status(404).send("Invalid teamId")
+  if (!teamId) {
+    return new Error("Invalid teamId")
   }
 
   //check if we got a good id
-  if (!req.params.gameId) {
-    return res.status(404).send("Invalid gameId")
+  if (!gameId) {
+    return new Error("Invalid gameId")
   }
 
-  const game = await infightDB.Game.findByPk(req.params.gameId, { include: { all: true } });
+  const game = await infightDB.Game.findByPk(gameId, { include: { all: true } });
   if (!game) {
-    return res.status(404).send("Invalid gameId")
+    return new Error("Invalid gameId")
   }
 
   if (game.status != 'active') {
-    return res.status(400).send("Game is not ready to be ticked")
+    return new Error("Game is not ready to be ticked")
   }
 
-  const guild = await infightDB.Guild.findByPk(req.params.teamId)
+  const guild = await infightDB.Guild.findByPk(teamId)
   if (!guild) {
-    return res.status(404).send("Invalid teamId")
+    return new Error("Invalid teamId")
   }
 
   try {
@@ -317,13 +319,25 @@ app.post('/games/:teamId/:gameId/tick', async (req, res) => {
       replacements: [game.id, 'alive']
     })
   } catch (error) {
-    return res.status(400).send("Game tick failed")
+    return new Error("Game tick failed")
   }
 
   const guildChannel = ifDisco.channels.cache.get(guild.gameChannelId)
-  guildChannel.send("Game " + req.params.gameId + " has distributed new action points!")
+  guildChannel.send("Game " + gameId + " has distributed new action points!")
 
-  res.send(game)
+  return game
+}
+
+app.post('/games/:teamId/:gameId/tick', async (req, res) => {
+  //TODO: this needs AUTH consideration
+  result = await doTick(req.params.teamId, req.params.gameId)
+
+  if (result instanceof Error) {
+    res.status(400).send(result)
+  } else {
+    res.send(result)
+  }
+
 })
 
 
@@ -418,11 +432,11 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
     }
   }
 
-  //find any living player in the target space
+  //find any player in the target space
   let targetGamePlayer = null;
   for (let i = 0; i < game.GamePlayers.length; i++) {
     const somePlayer = game.GamePlayers[i];
-    if (somePlayer.status == 'alive' && somePlayer.positionX == targetX && somePlayer.positionY == targetY) {
+    if (somePlayer.positionX == targetX && somePlayer.positionY == targetY) {
       targetGamePlayer = somePlayer
     }
   }
@@ -543,7 +557,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
       if (targetGamePlayer.health > 0) {
         guildChannel.send("<@" + gp.PlayerId + "> **💥shot💥** <@" + targetGamePlayer.PlayerId + ">, reducing their health to **" + targetGamePlayer.health + "**!")
       } else {
-        guildChannel.send("<@" + gp.PlayerId + "> **☠️ ELIMINATED ☠️** <@" + targetGamePlayer.PlayerId + ">" + stolenHP ? " and stole their " + stolenHP + "AP!" : "!")
+        guildChannel.send("<@" + gp.PlayerId + "> **☠️ ELIMINATED ☠️** <@" + targetGamePlayer.PlayerId + ">  and stole their AP!")
       }
 
       //check if game is over
@@ -586,6 +600,25 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
 // Moves: Create
 
 // How to run the game CRON?
+
+setInterval(async () => {
+  console.log("Doing a tick scan")
+
+  let gamesNeedingTicks = await infightDB.Game.findAll({
+    where: {
+      nextTickTime: {
+        [Op.lt]: new Date(),
+      },
+      status: 'active'
+    },
+  })
+
+  for (let i = 0; i < gamesNeedingTicks.length; i++) {
+    const game = gamesNeedingTicks[i];
+    doTick(game.GuildId, game.id)
+
+  }
+}, 1000 * 10) //ten second check loop
 
 app.listen(port, () => {
   console.log(`Infight server listening on port ${port}`)

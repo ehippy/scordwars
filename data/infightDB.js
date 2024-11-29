@@ -47,6 +47,11 @@ const Guild = sequelize.define('Guild', {
     currentGameId: {
         type: DataTypes.INTEGER,
         allowNull: true
+    },
+    minimumPlayerCount: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: 6
     }
 })
 
