@@ -125,6 +125,11 @@ const Game = sequelize.define('Game', {
     winningPlayer: {
         type: DataTypes.INTEGER,
         allowNull: true
+    },
+    boardHeartLocations: {
+        type: DataTypes.JSON,
+        allowNull: true,
+        defaultValue: []
     }
 })
 Guild.hasMany(Game, {foreignKey: 'GuildId'})

@@ -284,7 +284,7 @@ app.post('/games/:teamId/:gameId/start', async (req, res) => {
 })
 
 async function doTick(teamId, gameId) {
-  console.log("Doing game tick for " + gameId)
+  console.log("Starting game tick for " + gameId)
   //check if we got a good id
   if (!teamId) {
     return new Error("Invalid teamId")
@@ -337,9 +337,7 @@ app.post('/games/:teamId/:gameId/tick', async (req, res) => {
   } else {
     res.send(result)
   }
-
 })
-
 
 app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
 
@@ -394,7 +392,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
     return res.status(404).send("You aren't in this game")
   }
 
-  if (gp.actions < 1) {
+  if (gp.actions < 1 && action != 'giveHP') {
     return res.status(400).send("You don't have enough AP")
   }
 
@@ -602,7 +600,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
 // How to run the game CRON?
 
 setInterval(async () => {
-  console.log("Doing a tick scan")
+  //console.log("Doing a tick scan")
 
   let gamesNeedingTicks = await infightDB.Game.findAll({
     where: {
