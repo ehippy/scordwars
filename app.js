@@ -618,7 +618,7 @@ setInterval(async () => {
     doTick(game.GuildId, game.id)
 
   }
-}, 1000 * 10) //ten second check loop
+}, 1000 * 30) //how often to query for games that need AP distro
 
 app.listen(port, () => {
   console.log(`Infight server listening on port ${port}`)
