@@ -9,6 +9,7 @@
   "author": "fj",
   "license": "ISC",
   "dependencies": {
+    "better-sse": "^0.14.1",
     "cors": "^2.8.5",
     "discord.js": "^14.7.1",
     "dotenv": "^16.0.3",
