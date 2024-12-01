@@ -156,7 +156,7 @@ app.get('/games/:teamId/:gameId', async (req, res) => {
   }
 
   //check if we got a good id
-  if (!req.params.gameId) {
+  if (!req.params.gameId || Number.isNaN(Number.parseInt(req.params.gameId))) {
     return res.status(404).send(new Error("Invalid gameId"))
   }
 

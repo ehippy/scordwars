@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 module.exports = function (app, settings, db) {
 
     var DiscordStrategy = require('passport-discord').Strategy;
-    var scopes = ['identify', 'email', 'guilds'];
+    var scopes = ['identify', 'guilds']; //removed: 'email', 
 
     const passport = require('passport');
 
@@ -36,9 +36,9 @@ module.exports = function (app, settings, db) {
             await saveUser(profile, refreshToken)
 
             const profileForSession = {
-                username: profile.username,
+                username: profile.global_name,
                 avatar: profile.avatar,
-                email: profile.email,
+                // email: profile.email,
                 id: profile.id
             }
             return cb(null, profileForSession);
@@ -61,7 +61,7 @@ module.exports = function (app, settings, db) {
     
         await db.Player.upsert({
             id: discordProfile.id,
-            name: discordProfile.username,
+            name: discordProfile.global_name,
             discriminator: discordProfile.discriminator,
             avatar: discordProfile.avatar            
         })
