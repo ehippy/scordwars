@@ -1,4 +1,4 @@
-module.exports = function (db) {
+module.exports = function (db, gameEventChannels) {
     const fs = require('node:fs');
     const path = require('node:path');
     const { Client, Collection, Events, GatewayIntentBits, ChannelType } = require('discord.js');
@@ -67,7 +67,7 @@ module.exports = function (db) {
         g.isConnected = true
         await g.save()
 
-        channel.send('Hiya guys!')
+        channel.send('Hiya guys!') //TODO better hello message
     })
 
     //removed from a server

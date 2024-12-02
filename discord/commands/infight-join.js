@@ -5,8 +5,7 @@ module.exports = {
 		.setName('infight-join')
 		.setDescription('Join the Infight.io game on this Discord'),
 	async execute(interaction) {
-		const { PlayerGuild } = require('../../data/infightDB');
-		const infightDB = require('../../data/infightDB')
+		const { infightDB, PlayerGuild, Guild, Game, GamePlayer } = require('../../data/infightDB')
 		console.log(`join fight from  ${interaction.member.id} `);
 
 		const player = await infightDB.Player.findByPk(interaction.member.id)
@@ -32,7 +31,6 @@ module.exports = {
 		await pg.save()
 
 		// if there's a pending game, add them as a player
-
 
 		return interaction.reply("Bro! You're in!")
 

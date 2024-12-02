@@ -1,15 +1,11 @@
 const { SlashCommandBuilder } = require('discord.js');
 
-
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('infight-leave')
 		.setDescription('Leave the Infight.io game on this Discord'),
 	async execute(interaction) {
-
-		const { PlayerGuild } = require('../../data/infightDB');
-		const infightDB = require('../../data/infightDB')
-
+		const { infightDB, PlayerGuild, Guild, Game, GamePlayer } = require('../../data/infightDB')
 		console.log(`leave fight from  ${interaction.member.id} `);
 
 		const player = await infightDB.Player.findByPk(interaction.member.id)
@@ -34,7 +30,14 @@ module.exports = {
 		pg.isOptedInToPlay = false
 		await pg.save()
 
+		const guild = await infightDB.Guild.findByPk(interaction.guildId)
 		// if there's a pending game, remove them from the roster
+
+		if (guild.currentGameId) {
+			const game = await infightDB.Guild.findByPk(guild.currentGameId)
+
+			//TODO: how refactor all the game methods into some reusable spot
+		}
 
 		return interaction.reply("You're off the roster for the next Infight.")
 

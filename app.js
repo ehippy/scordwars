@@ -24,9 +24,17 @@ infightDB.init()
 const infightLogin = require("./auth/login")(app, settings, infightDB)
 const verifyToken = require("./auth/tokenAuthMiddleware")
 
-const ifDisco = require('./discord/ifDiscord')(infightDB)
-
+// an object containing Server Sent Event (SSE) broadcast channels for each game
 const { createSession, createChannel } = require("better-sse");
+const gameEventChannels = {}
+function broadcastUpdate(gameId) {
+  if (gameEventChannels[gameId]) {
+    gameEventChannels[gameId].broadcast('update')
+  }
+}
+
+const ifDisco = require('./discord/ifDiscord')(infightDB, gameEventChannels)
+
 
 app.get('/', (req, res) => {
   console.log(ifDisco.guilds.cache)
@@ -180,12 +188,6 @@ app.get('/games/:teamId/:gameId', async (req, res) => {
   res.send(game)
 })
 
-const gameEventChannels = {}
-function broadcastUpdate(gameId) {
-  if (gameEventChannels[gameId]) {
-    gameEventChannels[gameId].broadcast('update')
-  }
-}
 app.get("/games/:teamId/:gameId/events", async (req, res) => {
 	const session = await createSession(req, res);
   const gameId = req.params.gameId
