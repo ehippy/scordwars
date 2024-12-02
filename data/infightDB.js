@@ -126,6 +126,11 @@ const Game = sequelize.define('Game', {
         type: DataTypes.INTEGER,
         allowNull: true
     },
+    minimumPlayerCount: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 2
+    }, 
     boardHeartLocations: {
         type: DataTypes.JSON,
         allowNull: true,
@@ -168,6 +173,14 @@ const GamePlayer = sequelize.define('GamePlayer', {
         allowNull: true
     },
     positionY: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    deathTime: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    winPosition: {
         type: DataTypes.INTEGER,
         allowNull: true
     }
