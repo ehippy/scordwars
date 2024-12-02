@@ -5,7 +5,7 @@ module.exports = {
 		.setName('infight-leave')
 		.setDescription('Leave the Infight.io game on this Discord'),
 	async execute(interaction) {
-		const { infightDB, PlayerGuild, Guild, Game, GamePlayer } = require('../../data/infightDB')
+		const { infightDB, PlayerGuild, Guild, Game, GamePlayer } = require('../../models/infightDB')
 		console.log(`leave fight from  ${interaction.member.id} `);
 
 		const player = await infightDB.Player.findByPk(interaction.member.id)

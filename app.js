@@ -18,7 +18,7 @@ const port = 3000
 app.use(express.json());
 app.use(cors())
 
-const infightDB = require('./data/infightDB')
+const infightDB = require('./models/infightDB')
 infightDB.init()
 
 const infightLogin = require("./auth/login")(app, settings, infightDB)
@@ -37,7 +37,7 @@ const ifDisco = require('./discord/ifDiscord')(infightDB, gameEventChannels)
 
 
 app.get('/', (req, res) => {
-  console.log(ifDisco.guilds.cache)
+  //console.log(ifDisco.guilds.cache)
   res.send('Hello from the infight api!')
 })
 
@@ -647,6 +647,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
   res.send(game)
 })
 
+// repeating check to see what games are due for an action point distro
 setInterval(async () => {
   //console.log("Doing a tick scan")
 
