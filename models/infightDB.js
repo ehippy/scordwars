@@ -3,65 +3,10 @@ const sequelize = new Sequelize(process.env.POSTGRES_CONN, {
     logging: false
 })
 
+// Players and Guilds represent peoples' Discord Accounts, Discord Guilds (servers), and their associations
 const Player = require('./Player')(sequelize)
-
-const Guild = sequelize.define('Guild', {
-    id: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        primaryKey: true
-    },
-    name: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
-    icon: {
-        type: DataTypes.STRING
-    },
-    isConnected: {
-        type: DataTypes.BOOLEAN,
-        allowNull: true,
-        defaultValue: false
-    },
-    gameChannelId: {
-        type: DataTypes.STRING,
-        allowNull: true
-    },
-    currentGameId: {
-        type: DataTypes.INTEGER,
-        allowNull: true
-    },
-    minimumPlayerCount: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        defaultValue: 6
-    }
-})
-
-const PlayerGuild = sequelize.define('PlayerGuilds', {
-    GuildId: {
-        type: DataTypes.STRING,
-        references: {
-            model: Guild,
-            key: 'id'
-        }
-    },
-    PlayerId: {
-        type: DataTypes.STRING,
-        references: {
-            model: Player,
-            key: 'id'
-        }
-    },
-    isAdmin: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false
-    },
-    isOptedInToPlay: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false
-    }
-});
+const Guild = require('./Guild')(sequelize)
+const PlayerGuild = require('./PlayerGuild')(sequelize);
 Guild.belongsToMany(Player, { through: PlayerGuild });
 Player.belongsToMany(Guild, { through: PlayerGuild });
 

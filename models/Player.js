@@ -2,17 +2,8 @@ const { Sequelize, DataTypes, Model } = require('sequelize')
 
 module.exports = function (sequelize) {
 
-
     class Player extends Model {
-        static classLevelMethod() {
-            return 'foo';
-        }
-        instanceLevelMethod() {
-            return 'bar';
-        }
-        getFullname() {
-            return [this.firstname, this.lastname].join(' ');
-        }
+        
     }
 
     // set up the Sequelize fields
