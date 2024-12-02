@@ -3,24 +3,7 @@ const sequelize = new Sequelize(process.env.POSTGRES_CONN, {
     logging: false
 })
 
-const Player = sequelize.define('Player', {
-    id: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        primaryKey: true
-    },
-    name: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
-    discriminator: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
-    avatar: {
-        type: DataTypes.STRING
-    }
-})
+const Player = require('./Player')(sequelize)
 
 const Guild = sequelize.define('Guild', {
     id: {
