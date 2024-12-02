@@ -5,15 +5,15 @@ module.exports = {
 		.setName('infight-leave')
 		.setDescription('Leave the Infight.io game on this Discord'),
 	async execute(interaction) {
-		const { infightDB, PlayerGuild, Guild, Game, GamePlayer } = require('../../models/infightDB')
+		const db = require('../../models/infightDB')
 		console.log(`leave fight from  ${interaction.member.id} `);
 
-		const player = await infightDB.Player.findByPk(interaction.member.id)
+		const player = await db.Player.findByPk(interaction.member.id)
 		if (player == null) {
 			return interaction.reply("You haven't signed up at http://infight.io yet!")
 		}
 
-		const pg = await infightDB.PlayerGuild.findOne({
+		const pg = await db.PlayerGuild.findOne({
 			where: {
 				GuildId: interaction.guildId,
 				PlayerId: interaction.member.id
@@ -21,7 +21,7 @@ module.exports = {
 		})
 
 		if (pg == null) {
-			pg = PlayerGuild.build({
+			pg = db.PlayerGuild.build({
 				GuildId: interaction.guildId,
 				PlayerId: interaction.member.id
 			})
@@ -30,11 +30,11 @@ module.exports = {
 		pg.isOptedInToPlay = false
 		await pg.save()
 
-		const guild = await infightDB.Guild.findByPk(interaction.guildId)
+		const guild = await db.Guild.findByPk(interaction.guildId)
 		// if there's a pending game, remove them from the roster
 
 		if (guild.currentGameId) {
-			const game = await infightDB.Guild.findByPk(guild.currentGameId)
+			const game = await db.Guild.findByPk(guild.currentGameId)
 
 			//TODO: how refactor all the game methods into some reusable spot
 		}

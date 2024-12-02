@@ -5,15 +5,15 @@ module.exports = {
 		.setName('infight-join')
 		.setDescription('Join the Infight.io game on this Discord'),
 	async execute(interaction) {
-		const { infightDB, PlayerGuild, Guild, Game, GamePlayer } = require('../../models/infightDB')
+		const db = require('../../models/infightDB')
 		console.log(`join fight from  ${interaction.member.id} `);
 
-		const player = await infightDB.Player.findByPk(interaction.member.id)
+		const player = await db.Player.findByPk(interaction.member.id)
 		if (player == null) {
 			return interaction.reply("You haven't signed up at http://infight.io yet!")
 		}
 
-		const pg = await infightDB.PlayerGuild.findOne({
+		const pg = await db.PlayerGuild.findOne({
 			where: {
 				GuildId: interaction.guildId,
 				PlayerId: interaction.member.id
@@ -21,7 +21,7 @@ module.exports = {
 		})
 
 		if (pg == null) {
-			pg = PlayerGuild.build({
+			pg = db.PlayerGuild.build({
 				GuildId: interaction.guildId,
 				PlayerId: interaction.member.id
 			})
