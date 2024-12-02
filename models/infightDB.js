@@ -30,6 +30,7 @@ GamePlayer.hasMany(Move, { as: 'ActingPlayer', foreignKey: 'actingGamePlayerId' 
 GamePlayer.hasMany(Move, { as: 'TargetPlayer', foreignKey: 'targetGamePlayerId' })
 Move.belongsTo(GamePlayer)
 
+// Wrap it all together, connect to the db and sync tables
 module.exports = {
     init: async function () {
         try {

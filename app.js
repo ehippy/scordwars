@@ -129,20 +129,14 @@ app.post('/games/:teamId/new', verifyToken, async (req, res) => {
       }
     })
 
-    // send some hype abouut the muster period)
     const GamePlayersToCreate = []
     optedInGuildMembers.forEach(gm => {
-      const gamePlayer = {
-        GameId: game.id,
-        PlayerId: gm.PlayerId
-      }
-      GamePlayersToCreate.push(gamePlayer)
+      game.addPlayer(gm.PlayerId)
     });
-
-    const playerCreateResult = await infightDB.GamePlayer.bulkCreate(GamePlayersToCreate, { transaction: t, validate: true })
 
     t.commit()
 
+    // send some hype abouut the muster period)
     const guildChannel = ifDisco.channels.cache.get(guild.gameChannelId)
     guildChannel.send("Game created!")
 
