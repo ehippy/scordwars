@@ -42,6 +42,9 @@ module.exports = function (sequelize) {
         startGame() {
             //TODO, move from app.js
         }
+        getUrl() {
+            return process.env.UI_BASE_URL + '/games/' + this.GuildId + '/' + this.id
+        }
     }
 
     // set up the Sequelize fields

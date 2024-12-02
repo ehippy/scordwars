@@ -20,6 +20,9 @@ DISCORD_BOT_TOKEN=""
 
 # Some big, long secret string to hash session tokens with
 SESSION_SECRET=""
+
+# The base url of the UI site
+UI_BASE_URL="http://localhost:5173"
 ```
 
 

@@ -138,7 +138,7 @@ app.post('/games/:teamId/new', verifyToken, async (req, res) => {
 
     // send some hype abouut the muster period)
     const guildChannel = ifDisco.channels.cache.get(guild.gameChannelId)
-    guildChannel.send("Game created!")
+    guildChannel.send("[New Game](" + game.getUrl() + ") created!")
 
     res.send(game)
 
