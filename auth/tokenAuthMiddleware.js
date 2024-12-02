@@ -5,7 +5,7 @@ const verifyToken = (req, res, next) => {
     if (req.headers && req.headers.authorization) {
         jwt.verify(req.headers.authorization, process.env.SESSION_SECRET, function (err, decoded) {
             
-            console.log("token middleware jwt:", decoded)
+            //console.log("token middleware jwt:", decoded)
 
             if (err) {
                 console.log("JWT auth error", error)
