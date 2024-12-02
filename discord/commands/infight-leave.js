@@ -4,7 +4,7 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('infight-leave')
 		.setDescription('Leave the Infight.io game on this Discord'),
-	async execute(interaction) {
+	async execute(interaction, gameEventChannels) {
 		try {
 			const db = require('../../models/infightDB')
 			console.log(`leave fight from  ${interaction.member.id} `);
@@ -34,7 +34,10 @@ module.exports = {
 			const guild = await db.Guild.findByPk(interaction.guildId)
 			// if there's a pending game, remove them from the roster
 			const existingGame = await guild.getCurrentGame()
-			await existingGame.removePlayer(pg.PlayerId)
+			if (existingGame != null) {
+				await existingGame.removePlayer(pg.PlayerId)
+				gameEventChannels[existingGame.id].broadcast('update')
+			}
 
 			return interaction.reply("You're off the roster for the next Infight.")
 		} catch (error) {

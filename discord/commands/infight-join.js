@@ -4,7 +4,7 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('infight-join')
 		.setDescription('Join the Infight.io game on this Discord'),
-	async execute(interaction) {
+	async execute(interaction, gameEventChannels) {
 		try {
 
 			const db = require('../../models/infightDB')
@@ -39,6 +39,7 @@ module.exports = {
 			const currentGame = await guild.getCurrentGame()
 			if (null != currentGame) {
 				await currentGame.addPlayer(pg.PlayerId)
+				gameEventChannels[currentGame.id].broadcast('update')
 			}
 			
 			return interaction.reply("You are on the roster for the next game!")
