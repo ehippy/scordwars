@@ -115,7 +115,7 @@ module.exports = function (sequelize) {
                 gamePlayers[index].positionY = startingPos[1]
 
                 const saveResult = await gamePlayers[index].save()
-                console.log('saved starting position', saveResult)
+                //console.log('saved starting position', saveResult)
             }
             //set the next AP distro time, change the game status to active
             const thisMoment = new Date()
@@ -126,7 +126,7 @@ module.exports = function (sequelize) {
 
             const gameSaved = await this.save()
 
-            this.notify("🎲 **Game on!** 🎮 The latest [Infight.io game](" + this.getUrl() + ") has started! Band together to 👑 conquer others.  Dare to betray! 🥷")
+            this.notify("## 🎲 **Game on!** 🎮 The latest [Infight.io game](" + this.getUrl() + ") has started! Band together to 👑 conquer others! Be the last.")
 
         }
         getUrl() {
@@ -299,6 +299,39 @@ module.exports = function (sequelize) {
                 const game = gamesNeedingTicks[i];
                 game.doTick()
               }
+        }
+
+        async sendAfterActionReport() {
+
+        //after action report
+        let allPlayers = await this.sequelize.models.GamePlayer.findAll({
+            where: {
+                GameId: this.id
+            },
+            order:[
+              ['winPosition', 'ASC']
+            ]
+          })
+          let leaderBoard = "### 🏆 Game Rankings 🏆"
+          allPlayers.forEach(ep => {
+            leaderBoard += `\n`
+            switch (ep.winPosition) {
+              case 1:
+                leaderBoard += '🥇'
+                break;
+              case 2:
+                leaderBoard += '🥈'
+                break;
+              case 3:
+                leaderBoard += '🥉'
+                break;
+              default:
+                leaderBoard += `*${ep.winPosition}.*`
+                break
+            }
+            leaderBoard += ` <@${ep.PlayerId}>`
+          })
+          this.notify(leaderBoard)
         }
     }
 

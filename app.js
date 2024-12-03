@@ -488,9 +488,9 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
       move.targetGamePlayerId = targetGamePlayer.id
       await move.save()
 
-      let shotMsg = "<@" + gp.PlayerId + "> **💥shot💥** <@" + targetGamePlayer.PlayerId + ">, reducing their health to **" + targetGamePlayer.health + "**!"
+      let shotMsg = "<@" + gp.PlayerId + "> **💥shot💥** <@" + targetGamePlayer.PlayerId + ">, reducing their health to **" + targetGamePlayer.health + "**! 🩸"
       if (targetGamePlayer.health == 0) {
-        shotMsg = "<@" + gp.PlayerId + "> **☠️ ELIMINATED ☠️** <@" + targetGamePlayer.PlayerId + ">  and stole their AP!"
+        shotMsg = "### <@" + gp.PlayerId + "> **☠️ ELIMINATED ☠️** <@" + targetGamePlayer.PlayerId + ">  and stole their AP!"
       }
       game.notify(shotMsg)
 
@@ -505,14 +505,13 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
         guild.currentGameId = null
         await guild.save()
 
-        game.notify("👑 <@" + gp.PlayerId + "> **_WON THE GAME!!_** 🏁")
+        game.notify("# 🎉 👑 <@" + gp.PlayerId + "> **_WON THE INFIGHT!!_** 🏁 🎉")
 
-        //TODO: after action report
+        game.sendAfterActionReport()
 
-
-        // setTimeout(()=> {
-        //   this.createNewGame(game.GuildId, game.boardHeight, game.boardWidth, game.minutesPerActionDistro)
-        // }, 1000*60*2) //start a new game automatically after 2 min
+        setTimeout(()=> {
+          infightDB.Game.createNewGame(game.GuildId, game.boardHeight, game.boardWidth, game.minutesPerActionDistro)
+        }, 1000*60*2) //start a new game automatically after 2 min
       }
 
 
