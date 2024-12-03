@@ -136,7 +136,7 @@ module.exports = function (sequelize) {
             this.sequelize.models.Game.notifier.notify(this, msg)
         }
         async doTick() {
-            console.log("Starting game tick for " + this.id)
+            //console.log("Starting game tick for " + this.id)
 
             if (this.status != 'active') {
                 throw new Exception("Game is not active")
@@ -264,9 +264,9 @@ module.exports = function (sequelize) {
 
             this.changed('boardHeartLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
 
-            console.log('added a heart at', freeSpace)
+            //console.log('added a heart at', freeSpace)
             const saveResult = await this.save()
-            console.log('saveResult', saveResult)
+            //console.log('saveResult', saveResult)
         }
         
         static async startGamesNeedingToStart() {
