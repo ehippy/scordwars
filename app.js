@@ -1,5 +1,4 @@
 console.log("Starting scordwards server")
-const { Op } = require('sequelize');
 
 require('dotenv').config()
 const authSettings = {
@@ -24,7 +23,7 @@ const { createSession, createChannel } = require("better-sse");
 const InfightNotifier = {
   sseChannels: {},
   disco: null,
-  async addToChannel(req, res) {
+  async addToChannel(req, res) { //saves an HTTP connection to a particular channel for later notification
     const session = await createSession(req, res);
     const gameId = req.params.gameId
     if (!this.sseChannels[gameId]) {
@@ -34,7 +33,7 @@ const InfightNotifier = {
 
     session.push("You're connected to game events");
   },
-  async notify(game, msg) {
+  async notify(game, msg) { //sends a string out to all channels for a game
     //tell discord
     const guild = await infightDB.sequelize.models.Guild.findByPk(game.GuildId) //TODO too many queries, cache gameChannelId somewhere
     const guildChannel = this.disco.channels.cache.get(guild.gameChannelId)
@@ -54,14 +53,14 @@ const InfightNotifier = {
 
 const infightDB = require('./models/infightDB')
 infightDB.init()
-infightDB.sequelize.models.Game.notifier = InfightNotifier
+infightDB.sequelize.models.Game.notifier = InfightNotifier // add the notifier to the Game model so its available to Games
 
 const infightLogin = require("./auth/login")(app, authSettings, infightDB)
 const verifyToken = require("./auth/tokenAuthMiddleware")
 
 
 const ifDisco = require('./discord/ifDiscord')(infightDB)
-InfightNotifier.disco = ifDisco
+InfightNotifier.disco = ifDisco // attach discord to the notifier
 
 app.get('/', (req, res) => {
   //console.log(ifDisco.guilds.cache)
@@ -552,20 +551,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
 // repeating check to see what games are due for an action point distro
 setInterval(async () => {
   //console.log("Doing a tick scan")
-
-  let gamesNeedingTicks = await infightDB.Game.findAll({
-    where: {
-      nextTickTime: {
-        [Op.lt]: new Date(),
-      },
-      status: 'active'
-    },
-  })
-
-  for (let i = 0; i < gamesNeedingTicks.length; i++) {
-    const game = gamesNeedingTicks[i];
-    game.doTick()
-  }
+  infightDB.sequelize.models.Game.tickGamesNeedingTick()
 }, 1000 * 30) //how often to query for games that need AP distro
 
 app.listen(port, () => {

@@ -1,4 +1,4 @@
-const { Sequelize, DataTypes, Model } = require('sequelize')
+const { Sequelize, DataTypes, Model, Op } = require('sequelize')
 
 module.exports = function (sequelize) {
 
@@ -129,6 +129,23 @@ module.exports = function (sequelize) {
 
         }
 
+        static async tickGamesNeedingTick() {
+
+            let gamesNeedingTicks = await this.findAll({
+                where: {
+                  nextTickTime: {
+                    [Op.lt]: new Date(),
+                  },
+                  status: 'active'
+                },
+              })
+            
+              for (let i = 0; i < gamesNeedingTicks.length; i++) {
+                const game = gamesNeedingTicks[i];
+                game.doTick()
+              }
+
+        }
     }
 
     // set up the Sequelize fields
