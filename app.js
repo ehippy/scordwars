@@ -348,6 +348,22 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
         return res.status(400).send("A player is already in that space")
       }
 
+      // did they collect a heart
+      let collectedHeart = false
+      for (let i = 0; i < game.boardHeartLocations.length; i++) {
+        const heartSpot = game.boardHeartLocations[i];
+        if (heartSpot[0] == targetX && heartSpot[1] == targetY) {
+          gp.health += 1
+          game.boardHeartLocations.splice(i, 1)
+          game.changed('boardHeartLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
+          await game.save()
+          collectedHeart = true
+          break
+        }
+      }
+
+      const directionDescription = infightDB.Move.describeMoveDirection([gp.positionX, gp.positionY], [targetX, targetY])
+
       gp.positionX = targetX
       gp.positionY = targetY
       gp.actions -= 1
@@ -355,7 +371,13 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
       await gp.save()
       await move.save()
 
-      game.notify("<@" + gp.PlayerId + "> 🏃 moved!")
+      const movementVerb = infightDB.Move.getRandomMovementDescriptionWithEmoji()
+      let heartPickupText = ''
+      if (collectedHeart) {      
+        heartPickupText = ' and collected a heart 💖'
+      }
+
+      game.notify(`<@${gp.PlayerId}> ${movementVerb} ${directionDescription}${heartPickupText}!`)
 
       return res.send("Moved!")
     }
@@ -398,7 +420,12 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
       move.targetGamePlayerId = targetGamePlayer.id
       await move.save()
 
-      game.notify("<@" + gp.PlayerId + "> (" + gp.health + " HP) 💌 gave an HP to <@" + targetGamePlayer.PlayerId + "> (" + targetGamePlayer.health + " HP)!")
+      if (targetGamePlayer.health == 1) {
+        game.notify("<@" + gp.PlayerId + "> 😇 brought <@" + targetGamePlayer.PlayerId + "> back from the dead!")
+
+      } else {
+        game.notify("<@" + gp.PlayerId + "> (" + gp.health + " HP) 💌 gave an HP to <@" + targetGamePlayer.PlayerId + "> (" + targetGamePlayer.health + " HP)!")
+      }
 
       return res.send("Gave HP!")
     }
@@ -451,9 +478,9 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
         //TODO: after action report
 
 
-        setTimeout(()=> {
-          this.createNewGame(game.GuildId, game.boardHeight, game.boardWidth, game.minutesPerActionDistro)
-        }, 1000*60*2) //start a new game automatically after 2 min
+        // setTimeout(()=> {
+        //   this.createNewGame(game.GuildId, game.boardHeight, game.boardWidth, game.minutesPerActionDistro)
+        // }, 1000*60*2) //start a new game automatically after 2 min
       }
 
 

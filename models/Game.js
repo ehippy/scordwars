@@ -64,6 +64,44 @@ module.exports = function (sequelize) {
             console.log('Should Start Game fell through the conditionals')
         }
 
+        async #findClearSpace(gamePlayers) {
+            let loopCount = 0
+            let foundClearSpace = false
+            while (!foundClearSpace) {
+                loopCount++
+                foundClearSpace = true
+
+                const newPos = [
+                    Math.floor(Math.random() * this.boardWidth),
+                    Math.floor(Math.random() * this.boardHeight)
+                ]
+
+                //did we crash into a player?
+                for (let i = 0; i < gamePlayers.length; i++) {
+                    const gp = gamePlayers[i];
+                    if (gp.positionX == newPos[0] && gp.positionY == newPos[1]) {
+                        foundClearSpace = false
+                    }
+                }
+
+                //did we crash into a heart
+                for (let i = 0; i < this.boardHeartLocations.length; i++) {
+                    const hl = this.boardHeartLocations[i];
+                    if (hl[0] == newPos[0] && hl[1] == newPos[1]) {
+                        foundClearSpace = false
+                    }
+                }
+
+                if (foundClearSpace) {
+                    return newPos
+                }
+
+                if (loopCount > 10000) {
+                    throw new Exception("findClearSpace ran too long")
+                }
+            }
+        }
+
         async startGame() {
 
             if (this.status != 'new') {
@@ -71,34 +109,8 @@ module.exports = function (sequelize) {
             }
             //position the players
             const gamePlayers = await this.getGamePlayers()
-            const startingPositions = []
-            for (let i = 0; i < gamePlayers.length; i++) {
-                var foundClearSpace = false
-                while (!foundClearSpace) {
-                    foundClearSpace = true
-
-                    const newPos = [
-                        Math.floor(Math.random() * this.boardWidth),
-                        Math.floor(Math.random() * this.boardHeight)
-                    ]
-                    if (startingPositions.length == 0) {
-                        startingPositions.push(newPos)
-                        continue
-                    }
-                    startingPositions.forEach(existingStartPos => {
-                        if (newPos[0] == existingStartPos[0] && newPos[1] == existingStartPos[1]) {
-                            foundClearSpace = false
-                        }
-                    })
-                    if (foundClearSpace) {
-                        startingPositions.push(newPos)
-                    }
-                }
-
-            }
-
-            for (let index = 0; index < startingPositions.length; index++) {
-                const startingPos = startingPositions[index];
+            for (let index = 0; index < gamePlayers.length; index++) {
+                const startingPos = await this.#findClearSpace(gamePlayers);
                 gamePlayers[index].positionX = startingPos[0]
                 gamePlayers[index].positionY = startingPos[1]
 
@@ -145,7 +157,15 @@ module.exports = function (sequelize) {
                     replacements: [this.id, 'alive']
                 })
 
-                this.notify("⚡ Infight distributed AP! [Make a move](" + this.getUrl() + ") and watch your back!")
+                let heartMsg = ''
+                const heartChance = 0.5
+                if (Math.random() > heartChance) {
+                    await this.addHeart()
+                    heartMsg = " A heart appeared! 💗 Is it nearby?"
+                }
+
+                this.notify("⚡ Infight distributed AP! [Make a move](" + this.getUrl() + ") and watch your back!" + heartMsg)
+
             } catch (error) {
                 console.log("game.doTick error", error)
             }
@@ -231,6 +251,22 @@ module.exports = function (sequelize) {
 
         async doMove() {
             //TODO: move doMove here from app.js
+        }
+        
+        async addHeart() {
+            const gamePlayers = await this.getGamePlayers()
+            const freeSpace = await this.#findClearSpace(gamePlayers)
+
+            if (!Array.isArray(this.boardHeartLocations)) {
+                this.boardHeartLocations = []
+            }
+            this.boardHeartLocations.push(freeSpace)
+
+            this.changed('boardHeartLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
+
+            console.log('added a heart at', freeSpace)
+            const saveResult = await this.save()
+            console.log('saveResult', saveResult)
         }
         
         static async startGamesNeedingToStart() {
