@@ -51,13 +51,17 @@ module.exports = function (sequelize) {
                 this.startTime = new Date(+new Date(thisMoment) + (60 * 60 * 1000)) // start in an hour
                 await this.save()
                 this.notify("🎉 Game has enough players! [The new game](" + this.getUrl() + ") will start in an hour! ⏳ Start conspiring! 🕵️ More people can still `/infight-join` until game time!")
+                return
             }
 
             if (gamePlayers.length < this.minimumPlayerCount && this.startTime != null) {
                 this.startTime = null
                 await this.save()
                 this.notify("⚠️ Game can't start! Player count dipped below **minimum of " + this.minimumPlayerCount + "**. Recruit a player to start the game!")
+                return
             }
+
+            console.log('Should Start Game fell through the conditionals')
         }
 
         async startGame() {
@@ -149,9 +153,6 @@ module.exports = function (sequelize) {
         }
 
         static async createNewGame(guildId, boardHeight, boardWidth, cycleMinutes) {
-
-            const t = await this.sequelize.transaction();
-
             try {
           
               // check if there's an active game
@@ -180,24 +181,20 @@ module.exports = function (sequelize) {
               // get all the relevant active players...?
           
               // create the game
-              const startDate = new Date()
-              startDate.setHours(startDate.getHours() + 2)
-          
               const game = this.build({
                 minutesPerActionDistro: cycleMinutes,
                 boardWidth: boardWidth,
                 boardHeight: boardHeight,
                 GuildId: guild.id,
-                startTime: startDate,
                 minimumPlayerCount: guild.minimumPlayerCount
               })
           
-              await game.save({ transaction: t })
+              await game.save()
               console.log('created game ' + game.id, game)
           
               //set the current game on the Guild
               guild.currentGameId = game.id
-              await guild.save({ transaction: t })
+              await guild.save()
           
               //find all opted-in players and add them to the game
               const optedInGuildMembers = await this.sequelize.models.PlayerGuild.findAll({
@@ -206,22 +203,23 @@ module.exports = function (sequelize) {
                   isOptedInToPlay: true
                 }
               })
+              
+              for (let i = 0; i < optedInGuildMembers.length; i++) {
+                const gm = optedInGuildMembers[i];
+                await game.addPlayer(gm.PlayerId)
+              }
           
-              optedInGuildMembers.forEach(gm => {
-                game.addPlayer(gm.PlayerId) //TODO is this gonna use the transaction
-              });
-          
-              t.commit()
           
               // send some hype abouut the muster period)
-              game.notify("[New Game](" + game.getUrl() + ") created with " + optedInGuildMembers.length + " players!")
+              game.notify("Alright! ♟️ [New Infight Game](" + game.getUrl() + ") created with " + optedInGuildMembers.length + " players!")
           
               //choose about starting in an hour, or waiting for more to join
               if (optedInGuildMembers.length < game.minimumPlayerCount) {
                 game.notify("To start [the new game](" + game.getUrl() + "), there need to be at least " + game.minimumPlayerCount + " players. Ask a friend to `/infight-join`!")
+              } else {
+                game.checkShouldStartGame()
               }
           
-              game.checkShouldStartGame()
 
               return game
           
@@ -231,6 +229,10 @@ module.exports = function (sequelize) {
             }
         }
 
+        async doMove() {
+            //TODO: move doMove here from app.js
+        }
+        
         static async startGamesNeedingToStart() {
             let gamesNeedingStarts = await this.findAll({
                 where: {

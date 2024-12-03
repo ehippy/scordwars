@@ -126,8 +126,9 @@ app.get("/games/:teamId/:gameId/events", async (req, res) => {
   InfightNotifier.addToChannel(req, res)
 });
 
+//this is a development endpoint to kill a game
 app.delete('/games/:teamId/:gameId', async (req, res) => {
-  //TODO: this needs AUTH consideration
+  //TODO: this needs to be disabled when not in DEV
   //check if we got a good id
   if (!req.params.teamId) {
     return res.status(404).send(new Error("Invalid teamId"))
@@ -147,11 +148,11 @@ app.delete('/games/:teamId/:gameId', async (req, res) => {
     const guildSave = await guild.save()
   }
 
-  game.notify("Game " + req.params.gameId + " deleted?!")
+  game.notify("Game " + req.params.gameId + " deleted by an admin. Sorry about that!")
   res.send(game)
 })
 
-
+//this is a development endpoing to start a game before it automatically does
 app.post('/games/:teamId/:gameId/start', async (req, res) => {
   //TODO: this needs AUTH consideration
   //check if we got a good id
@@ -170,6 +171,7 @@ app.post('/games/:teamId/:gameId/start', async (req, res) => {
 
 })
 
+//this is a development endpoint to force a tick before it automatically does one
 app.post('/games/:teamId/:gameId/tick', async (req, res) => {
   //TODO: this needs DEV MODE disabling
 
@@ -444,9 +446,14 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
         guild.currentGameId = null
         await guild.save()
 
-        game.notify("<@" + gp.PlayerId + "> **_WON THE GAME!!_**")
+        game.notify("👑 <@" + gp.PlayerId + "> **_WON THE GAME!!_** 🏁")
 
         //TODO: after action report
+
+
+        setTimeout(()=> {
+          this.createNewGame(game.GuildId, game.boardHeight, game.boardWidth, game.minutesPerActionDistro)
+        }, 1000*60*2) //start a new game automatically after 2 min
       }
 
 
