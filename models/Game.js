@@ -41,6 +41,25 @@ module.exports = function (sequelize) {
             }
             return
         }
+
+        async checkShouldStartGame() {
+            if (this.status != 'new') return
+
+            const gamePlayers = await this.getGamePlayers()
+            if (gamePlayers.length >= this.minimumPlayerCount && this.startTime == null) {
+                const thisMoment = new Date()
+                this.startTime = new Date(+new Date(thisMoment) + (60 * 60 * 1000)) // start in an hour
+                await this.save()
+                this.notify("🎉 Game has enough players! [The new game](" + this.getUrl() + ") will start in an hour! ⏳ Start conspiring! 🕵️ More people can still `/infight-join` until game time!")
+            }
+
+            if (gamePlayers.length < this.minimumPlayerCount && this.startTime != null) {
+                this.startTime = null
+                await this.save()
+                this.notify("⚠️ Game can't start! Player count dipped below **minimum of " + this.minimumPlayerCount + "**. Recruit a player to start the game!")
+            }
+        }
+
         async startGame() {
 
             if (this.status != 'new') {
@@ -91,7 +110,7 @@ module.exports = function (sequelize) {
 
             const gameSaved = await this.save()
 
-            this.notify("Game " + this.id + " started!")
+            this.notify("🎲 **Game on!** 🎮 The latest [Infight.io game](" + this.getUrl() + ") has started! Band together to 👑 conquer others.  Dare to betray! 🥷")
 
         }
         getUrl() {
@@ -198,19 +217,37 @@ module.exports = function (sequelize) {
               game.notify("[New Game](" + game.getUrl() + ") created with " + optedInGuildMembers.length + " players!")
           
               //choose about starting in an hour, or waiting for more to join
+              if (optedInGuildMembers.length < game.minimumPlayerCount) {
+                game.notify("To start [the new game](" + game.getUrl() + "), there need to be at least " + game.minimumPlayerCount + " players. Ask a friend to `/infight-join`!")
+              }
           
-          
+              game.checkShouldStartGame()
+
               return game
           
             } catch (error) {
               t.rollback()
               throw error
             }
+        }
 
+        static async startGamesNeedingToStart() {
+            let gamesNeedingStarts = await this.findAll({
+                where: {
+                  startTime: {
+                    [Op.lt]: new Date(),
+                  },
+                  status: 'new'
+                },
+              })
+            
+              for (let i = 0; i < gamesNeedingStarts.length; i++) {
+                const game = gamesNeedingStarts[i];
+                game.startGame()
+              }
         }
 
         static async tickGamesNeedingTick() {
-
             let gamesNeedingTicks = await this.findAll({
                 where: {
                   nextTickTime: {
@@ -224,7 +261,6 @@ module.exports = function (sequelize) {
                 const game = gamesNeedingTicks[i];
                 game.doTick()
               }
-
         }
     }
 

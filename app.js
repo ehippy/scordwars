@@ -465,6 +465,12 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
 setInterval(async () => {
   //console.log("Doing a tick scan")
   infightDB.sequelize.models.Game.tickGamesNeedingTick()
+}, 1000 * 25) //how often to query for games that need AP distro
+
+// repeating check to see what games are due to start
+setInterval(async () => {
+  //console.log("Doing a start scan")
+  infightDB.sequelize.models.Game.startGamesNeedingToStart()
 }, 1000 * 30) //how often to query for games that need AP distro
 
 app.listen(port, () => {

@@ -33,10 +33,11 @@ module.exports = {
 
 			const guild = await db.Guild.findByPk(interaction.guildId)
 			// if there's a pending game, remove them from the roster
-			const existingGame = await guild.getCurrentGame()
-			if (existingGame != null) {
-				await existingGame.removePlayer(pg.PlayerId)
-				existingGame.notify("<@" + pg.PlayerId + "> bailed!")
+			const currentGame = await guild.getCurrentGame()
+			if (currentGame != null) {
+				await currentGame.removePlayer(pg.PlayerId)
+				currentGame.notify("<@" + pg.PlayerId + "> left the roster!")
+				currentGame.checkShouldStartGame()
 			}
 
 			return interaction.reply("You're off the roster for the next Infight.")

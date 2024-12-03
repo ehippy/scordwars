@@ -40,6 +40,7 @@ module.exports = {
 			if (null != currentGame) {
 				await currentGame.addPlayer(pg.PlayerId)
 				currentGame.notify("<@" + pg.PlayerId + "> joined!")
+				currentGame.checkShouldStartGame()
 			}
 			
 			return interaction.reply("You are on the roster for the next game!")
