@@ -158,7 +158,7 @@ module.exports = function (sequelize) {
                 })
 
                 let heartMsg = ''
-                const heartChance = 0.5
+                const heartChance = 0.25
                 if (Math.random() > heartChance) {
                     await this.addHeart()
                     heartMsg = " A heart appeared! 💗 Is it nearby?"

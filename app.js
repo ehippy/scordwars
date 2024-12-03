@@ -436,6 +436,10 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
         return res.status(400).send("No player at that position")
       }
 
+      if (targetGamePlayer.health <= 0) {
+        return res.status(400).send("They're dead, Jim!")
+      }
+
       targetGamePlayer.health -= 1
       if (targetGamePlayer.health < 1) {
         targetGamePlayer.status = 'dead'
