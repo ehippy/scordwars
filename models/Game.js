@@ -41,13 +41,63 @@ module.exports = function (sequelize) {
             }
             return
         }
-        startGame() {
-            //TODO, move from app.js
+        async startGame() {
+
+            if (this.status != 'new') {
+                throw new Exception("Game isn't new, and can't be started")
+            }
+            //position the players
+            const gamePlayers = await this.getGamePlayers()
+            const startingPositions = []
+            for (let i = 0; i < gamePlayers.length; i++) {
+                var foundClearSpace = false
+                while (!foundClearSpace) {
+                    foundClearSpace = true
+
+                    const newPos = [
+                        Math.floor(Math.random() * this.boardWidth),
+                        Math.floor(Math.random() * this.boardHeight)
+                    ]
+                    if (startingPositions.length == 0) {
+                        startingPositions.push(newPos)
+                        continue
+                    }
+                    startingPositions.forEach(existingStartPos => {
+                        if (newPos[0] == existingStartPos[0] && newPos[1] == existingStartPos[1]) {
+                            foundClearSpace = false
+                        }
+                    })
+                    if (foundClearSpace) {
+                        startingPositions.push(newPos)
+                    }
+                }
+
+            }
+
+            for (let index = 0; index < startingPositions.length; index++) {
+                const startingPos = startingPositions[index];
+                gamePlayers[index].positionX = startingPos[0]
+                gamePlayers[index].positionY = startingPos[1]
+
+                const saveResult = await gamePlayers[index].save()
+                console.log('saved starting position', saveResult)
+            }
+            //set the next AP distro time, change the game status to active
+            const thisMoment = new Date()
+            const nextTick = new Date(+new Date(thisMoment) + this.minutesPerActionDistro * 60 * 1000)
+            this.status = 'active'
+            this.startTime = thisMoment
+            this.nextTickTime = nextTick
+
+            const gameSaved = await this.save()
+
+            this.notify("Game " + this.id + " started!")
+
         }
         getUrl() {
             return process.env.UI_BASE_URL + '/games/' + this.GuildId + '/' + this.id
         }
-        notify(msg){
+        notify(msg) {
             this.sequelize.models.Game.notifier.notify(this, msg)
         }
         async doTick() {

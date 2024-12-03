@@ -31,7 +31,7 @@ const InfightNotifier = {
       this.sseChannels[gameId] = createChannel()
     }
     this.sseChannels[gameId].register(session)
-  
+
     session.push("You're connected to game events");
   },
   async notify(game, msg) {
@@ -202,7 +202,7 @@ app.get('/games/:teamId/:gameId', async (req, res) => {
     ]
   });
   if (!game) {
-    return res.status(404).send(new Error("Game not found"))
+    return res.status(404).send("Game not found")
   }
 
   res.send(game)
@@ -241,76 +241,19 @@ app.delete('/games/:teamId/:gameId', async (req, res) => {
 app.post('/games/:teamId/:gameId/start', async (req, res) => {
   //TODO: this needs AUTH consideration
   //check if we got a good id
-  if (!req.params.teamId) {
-    return res.status(404).send("Invalid teamId")
-  }
 
-  //check if we got a good id
-  if (!req.params.gameId) {
-    return res.status(404).send("Invalid gameId")
-  }
-
-  const game = await infightDB.Game.findByPk(req.params.gameId, { include: { all: true } });
+  const game = await infightDB.Game.findByPk(req.params.gameId);
   if (!game) {
     return res.status(404).send("Invalid gameId")
   }
 
-  if (game.status != 'new') {
-    return res.status(400).send("Game is not ready to be started")
+  try {
+    const result = await game.startGame()
+    res.send(game)
+  } catch (error) {
+    return res.status(404).send(error)
   }
 
-  const guild = await infightDB.Guild.findByPk(req.params.teamId)
-  if (!guild) {
-    return res.status(404).send("Invalid teamId")
-  }
-
-  //position the players
-  const startingPositions = []
-  for (i = 0; i < game.GamePlayers.length; i++) {
-    var foundClearSpace = false
-    while (!foundClearSpace) {
-      foundClearSpace = true
-
-      const newPos = [
-        Math.floor(Math.random() * game.boardWidth),
-        Math.floor(Math.random() * game.boardHeight)
-      ]
-      if (startingPositions.length == 0) {
-        startingPositions.push(newPos)
-        continue
-      }
-      startingPositions.forEach(existingStartPos => {
-        if (newPos[0] == existingStartPos[0] && newPos[1] == existingStartPos[1]) {
-          foundClearSpace = false
-        }
-      })
-      if (foundClearSpace) {
-        startingPositions.push(newPos)
-      }
-    }
-
-  }
-
-  for (let index = 0; index < startingPositions.length; index++) {
-    const startingPos = startingPositions[index];
-    game.GamePlayers[index].positionX = startingPos[0]
-    game.GamePlayers[index].positionY = startingPos[1]
-
-    const saveResult = await game.GamePlayers[index].save()
-    console.log('saved starting position', saveResult)
-  }
-  //set the next AP distro time, change the game status to active
-  const thisMoment = new Date()
-  const nextTick = new Date(+new Date(thisMoment) + game.minutesPerActionDistro * 60 * 1000)
-  game.status = 'active'
-  game.startTime = thisMoment
-  game.nextTickTime = nextTick
-
-  const gameSaved = await game.save()
-
-  game.notify("Game " + req.params.gameId + " started!")
-
-  res.send(game)
 })
 
 app.post('/games/:teamId/:gameId/tick', async (req, res) => {
@@ -330,7 +273,7 @@ app.post('/games/:teamId/:gameId/tick', async (req, res) => {
 
 app.post('/games/:teamId/:gameId/hearts', async (req, res) => { //TODO this needs to be implemented
   //TODO: this needs DEV MODE disabling
-  
+
   console.log("Starting heart drop for " + gameId)
   //check if we got a good id
   if (!teamId) {
@@ -482,7 +425,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
       await move.save()
 
       game.notify("<@" + gp.PlayerId + "> ❤️ **healed** to **" + gp.health + "**!")
-      
+
       return res.send("Upgraded!")
     }
 
