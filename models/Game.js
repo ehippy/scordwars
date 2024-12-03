@@ -211,7 +211,7 @@ module.exports = function (sequelize) {
           
           
               // send some hype abouut the muster period)
-              game.notify("Alright! ♟️ [New Infight Game](" + game.getUrl() + ") created with " + optedInGuildMembers.length + " players!")
+              game.notify("Alright! 🃏 [New Infight Game](" + game.getUrl() + ") created with " + optedInGuildMembers.length + " players!")
           
               //choose about starting in an hour, or waiting for more to join
               if (optedInGuildMembers.length < game.minimumPlayerCount) {

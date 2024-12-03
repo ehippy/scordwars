@@ -67,7 +67,9 @@ module.exports = function (db) {
         g.isConnected = true
         await g.save()
 
-        channel.send('Hiya guys!') //TODO better hello message
+        channel.send("👋 Hiya gang! I'm infight.io, I'm a game you can play while you idle in Discord!")
+
+        //create an initial game?
     })
 
     //removed from a server
