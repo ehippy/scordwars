@@ -122,9 +122,89 @@ module.exports = function (sequelize) {
                     replacements: [this.id, 'alive']
                 })
 
-                this.notify("🚨 Infight gave AP!")
+                this.notify("⚡ Infight distributed AP! [Make a move](" + this.getUrl() + ") and watch your back!")
             } catch (error) {
                 console.log("game.doTick error", error)
+            }
+
+        }
+
+        static async createNewGame(guildId, boardHeight, boardWidth, cycleMinutes) {
+
+            const t = await this.sequelize.transaction();
+
+            try {
+          
+              // check if there's an active game
+              const guild = await this.sequelize.models.Guild.findByPk(guildId)
+              if (guild === null) {
+                throw new Exception("Invalid guild")
+              }
+          
+              if (guild.currentGameId) {
+                throw new Exception("Already a game in progress")
+              }
+          
+              // check for input size, cycle time, 
+              if (!cycleMinutes || cycleMinutes < 1 || cycleMinutes > 9999) {
+                throw new Exception("cycleMinutes is not valid")
+              }
+          
+              if (!boardHeight || boardHeight < 5 || boardHeight > 100) {
+                throw new Exception("boardHeight is not valid")
+              }
+          
+              if (!boardWidth || boardWidth < 5 || boardWidth > 100) {
+                throw new Exception("boardWidth is not valid")
+              }
+          
+              // get all the relevant active players...?
+          
+              // create the game
+              const startDate = new Date()
+              startDate.setHours(startDate.getHours() + 2)
+          
+              const game = this.build({
+                minutesPerActionDistro: cycleMinutes,
+                boardWidth: boardWidth,
+                boardHeight: boardHeight,
+                GuildId: guild.id,
+                startTime: startDate,
+                minimumPlayerCount: guild.minimumPlayerCount
+              })
+          
+              await game.save({ transaction: t })
+              console.log('created game ' + game.id, game)
+          
+              //set the current game on the Guild
+              guild.currentGameId = game.id
+              await guild.save({ transaction: t })
+          
+              //find all opted-in players and add them to the game
+              const optedInGuildMembers = await this.sequelize.models.PlayerGuild.findAll({
+                where: {
+                  GuildId: guild.id,
+                  isOptedInToPlay: true
+                }
+              })
+          
+              optedInGuildMembers.forEach(gm => {
+                game.addPlayer(gm.PlayerId) //TODO is this gonna use the transaction
+              });
+          
+              t.commit()
+          
+              // send some hype abouut the muster period)
+              game.notify("[New Game](" + game.getUrl() + ") created with " + optedInGuildMembers.length + " players!")
+          
+              //choose about starting in an hour, or waiting for more to join
+          
+          
+              return game
+          
+            } catch (error) {
+              t.rollback()
+              throw error
             }
 
         }

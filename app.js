@@ -81,99 +81,14 @@ app.get('/myTeams', verifyToken, async (req, res) => {
 
 app.post('/games/:teamId/new', verifyToken, async (req, res) => {
 
-  const t = await infightDB.sequelize.transaction();
-
+  //TODO: lock this to only in DEV, this should normally be done in discord with /infight-start
   try {
-    const player = await infightDB.Player.findByPk(req.user.id)
-    if (player === null) {
-      return res.status(404).send(new Error("User not logged in"))
-    }
-
-    //check if we got a good id
-    if (!req.params.teamId) {
-      return res.status(404).send(new Error("Invalid teamId"))
-    }
-
-    // check if there's an active game
-    const guild = await infightDB.Guild.findByPk(req.params.teamId);
-    if (guild === null) {
-      return res.status(404).send(new Error("Invalid teamId"))
-    }
-
-    if (guild.currentGameId) {
-      return res.status(409).send(new Error("Already a game in progress"))
-    }
-
-    // check to make sure the user is a member of the server
-    const matchingGuilds = await infightDB.PlayerGuild.findAndCountAll({
-      where: {
-        PlayerId: player.id,
-        GuildId: req.params.teamId
-      }
-    })
-    if (matchingGuilds.count == 0) {
-      return res.send(new Error("Player not a member of that team", { statusCode: 409 }))
-    }
-
-    // check for input size, cycle time, 
-    const cycleMinutes = req.body.cycleMinutes;
-    if (!cycleMinutes || isNaN(cycleMinutes) || cycleMinutes < 1 || cycleMinutes > 9999) {
-      return res.send(new Error("cycleMinutes is not valid", { statusCode: 400 }))
-    }
-
-    const boardSize = req.body.boardSize;
-    if (!boardSize || isNaN(boardSize) || boardSize < 5 || boardSize > 100) {
-      return res.send(new Error("boardSize is not valid", { statusCode: 400 }))
-    }
-
-    // get all the relevant active players...?
-
-    // create the game
-    const startDate = new Date()
-    startDate.setHours(startDate.getHours() + 2)
-
-    const game = infightDB.Game.build({
-      minutesPerActionDistro: cycleMinutes,
-      boardWidth: boardSize,
-      boardHeight: boardSize,
-      GuildId: req.params.teamId,
-      startTime: startDate,
-    })
-
-    await game.save({ transaction: t })
-    console.log('created game ' + game.id, game)
-
-    //set the current game on the Guild
-    guild.currentGameId = game.id
-    await guild.save({ transaction: t })
-
-    //find all opted-in players and add them to the game
-    const optedInGuildMembers = await infightDB.PlayerGuild.findAll({
-      where: {
-        GuildId: req.params.teamId,
-        isOptedInToPlay: true
-      }
-    })
-
-    const GamePlayersToCreate = []
-    optedInGuildMembers.forEach(gm => {
-      game.addPlayer(gm.PlayerId)
-    });
-
-    t.commit()
-
-    // send some hype abouut the muster period)
-    game.notify("[New Game](" + game.getUrl() + ") created!")
-
-    res.send(game)
-
+    const newGame = await infightDB.Game.createNewGame(req.params.teamId, req.body.boardSize, req.body.boardSize, req.body.cycleMinutes)
+    res.send(newGame)
   } catch (error) {
-    t.rollback()
-    return res.status(400).send(error)
+    res.status(404).send(error)
   }
-
 })
-
 
 app.get('/games/:teamId/:gameId', async (req, res) => {
 
@@ -334,8 +249,6 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
   if (!guild) {
     return res.status(404).send("Invalid teamId")
   }
-
-  const guildChannel = ifDisco.channels.cache.get(guild.gameChannelId)
 
   // get current GamePlayer
   var gp = null

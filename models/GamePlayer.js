@@ -33,7 +33,7 @@ module.exports = function (sequelize) {
             range: {
                 type: DataTypes.INTEGER,
                 allowNull: false,
-                defaultValue: 1
+                defaultValue: 2
             },
             positionX: {
                 type: DataTypes.INTEGER,
