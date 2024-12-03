@@ -410,8 +410,30 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
       }
 
       targetGamePlayer.health += 1
-      if (targetGamePlayer.health == 1) {
+      if (targetGamePlayer.health == 1) { // do a resurrection!
         targetGamePlayer.status = 'alive'
+        targetGamePlayer.winPosition = null
+        targetGamePlayer.deathTime = null
+        await targetGamePlayer.save()
+
+        //reshuffle the winPositions in the GamePlayers
+        let allPlayers = await infightDB.GamePlayer.findAll({
+          where: {
+              GameId: game.id
+          },
+          order:[
+            ['deathTime', 'ASC', 'NULLS LAST']
+          ]
+        })
+
+         for (let i = 0; i < allPlayers.length; i++) {
+          const maybeDeadPlayer = allPlayers[i];
+          if (maybeDeadPlayer.health == 0) {
+            maybeDeadPlayer.winPosition = allPlayers.length - i
+            maybeDeadPlayer.save() //not awaited, might race condition 
+          }
+         }
+
       }
       gp.health -= 1
 
@@ -500,6 +522,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
     return res.status(500).send("Not implemented")
 
   } catch (error) {
+    console.log("Action failed", error)
     return res.status(400).send("Action failed")
   }
 
