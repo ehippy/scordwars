@@ -1,4 +1,4 @@
-module.exports = function (db, gameEventChannels) {
+module.exports = function (db) {
     const fs = require('node:fs');
     const path = require('node:path');
     const { Client, Collection, Events, GatewayIntentBits, ChannelType } = require('discord.js');
@@ -35,7 +35,7 @@ module.exports = function (db, gameEventChannels) {
         }
     
         try {
-            await command.execute(interaction, gameEventChannels);
+            await command.execute(interaction);
         } catch (error) {
             console.error(error);
             await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });

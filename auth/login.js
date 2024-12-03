@@ -54,7 +54,7 @@ module.exports = function (app, settings, db) {
         const user = req.session.passport.user
 
         const jwtPayload = user
-        res.redirect(settings.uiUrl + 'authResponse?jwt=' + jwt.sign(jwtPayload, settings.sessionSecret)) // Successful auth
+        res.redirect(settings.uiUrl + '/authResponse?jwt=' + jwt.sign(jwtPayload, settings.sessionSecret)) // Successful auth
     });
 
     const saveUser = async (discordProfile, refreshToken) => {

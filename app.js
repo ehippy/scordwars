@@ -2,13 +2,13 @@ console.log("Starting scordwards server")
 const { Op } = require('sequelize');
 
 require('dotenv').config()
-const settings = {
+const authSettings = {
   discord_oauth2_client_id: process.env.DISCORD_OAUTH2_CLIENT_ID,
   discord_oauth2_client_secret: process.env.DISCORD_OAUTH2_CLIENT_SECRET,
   discordCallbackURL: '/auth/discord/callback',
   discordToken: process.env.DISCORD_BOT_TOKEN,
   sessionSecret: process.env.SESSION_SECRET,
-  uiUrl: 'http://localhost:5173/'
+  uiUrl: process.env.UI_BASE_URL
 }
 
 const express = require('express')
@@ -18,23 +18,50 @@ const port = 3000
 app.use(express.json());
 app.use(cors())
 
-const infightDB = require('./models/infightDB')
-infightDB.init()
-
-const infightLogin = require("./auth/login")(app, settings, infightDB)
-const verifyToken = require("./auth/tokenAuthMiddleware")
 
 // an object containing Server Sent Event (SSE) broadcast channels for each game
 const { createSession, createChannel } = require("better-sse");
-const gameEventChannels = {}
-function broadcastUpdate(gameId) {
-  if (gameEventChannels[gameId]) {
-    gameEventChannels[gameId].broadcast('update')
+const InfightNotifier = {
+  sseChannels: {},
+  disco: null,
+  async addToChannel(req, res) {
+    const session = await createSession(req, res);
+    const gameId = req.params.gameId
+    if (!this.sseChannels[gameId]) {
+      this.sseChannels[gameId] = createChannel()
+    }
+    this.sseChannels[gameId].register(session)
+  
+    session.push("You're connected to game events");
+  },
+  async notify(game, msg) {
+    //tell discord
+    const guild = await infightDB.sequelize.models.Guild.findByPk(game.GuildId) //TODO too many queries, cache gameChannelId somewhere
+    const guildChannel = this.disco.channels.cache.get(guild.gameChannelId)
+    guildChannel.send(msg)
+
+    //tell SSE
+    if (this.sseChannels[game.id]) {
+      this.sseChannels[game.id].broadcast(msg)
+    }
+  },
+  async notifyGameId(gameId, msg) {
+    const game = await infightDB.models.Game.getByPk(gameId)
+    this.notify(game, msg)
   }
 }
 
-const ifDisco = require('./discord/ifDiscord')(infightDB, gameEventChannels)
 
+const infightDB = require('./models/infightDB')
+infightDB.init()
+infightDB.sequelize.models.Game.notifier = InfightNotifier
+
+const infightLogin = require("./auth/login")(app, authSettings, infightDB)
+const verifyToken = require("./auth/tokenAuthMiddleware")
+
+
+const ifDisco = require('./discord/ifDiscord')(infightDB)
+InfightNotifier.disco = ifDisco
 
 app.get('/', (req, res) => {
   //console.log(ifDisco.guilds.cache)
@@ -137,8 +164,7 @@ app.post('/games/:teamId/new', verifyToken, async (req, res) => {
     t.commit()
 
     // send some hype abouut the muster period)
-    const guildChannel = ifDisco.channels.cache.get(guild.gameChannelId)
-    guildChannel.send("[New Game](" + game.getUrl() + ") created!")
+    game.notify("[New Game](" + game.getUrl() + ") created!")
 
     res.send(game)
 
@@ -183,14 +209,7 @@ app.get('/games/:teamId/:gameId', async (req, res) => {
 })
 
 app.get("/games/:teamId/:gameId/events", async (req, res) => {
-	const session = await createSession(req, res);
-  const gameId = req.params.gameId
-  if (!gameEventChannels[gameId]) {
-    gameEventChannels[gameId] = createChannel()
-  }
-  gameEventChannels[gameId].register(session)
-
-	session.push("You're connected to game events");
+  InfightNotifier.addToChannel(req, res)
 });
 
 app.delete('/games/:teamId/:gameId', async (req, res) => {
@@ -214,9 +233,7 @@ app.delete('/games/:teamId/:gameId', async (req, res) => {
     const guildSave = await guild.save()
   }
 
-  const guildChannel = ifDisco.channels.cache.get(guild.gameChannelId)
-  guildChannel.send("Game " + req.params.gameId + " deleted?!")
-  broadcastUpdate(req.params.gameId)
+  game.notify("Game " + req.params.gameId + " deleted?!")
   res.send(game)
 })
 
@@ -291,72 +308,28 @@ app.post('/games/:teamId/:gameId/start', async (req, res) => {
 
   const gameSaved = await game.save()
 
-  const guildChannel = ifDisco.channels.cache.get(guild.gameChannelId)
-  guildChannel.send("Game " + req.params.gameId + " started!")
-  broadcastUpdate(req.params.gameId)
+  game.notify("Game " + req.params.gameId + " started!")
 
   res.send(game)
 })
 
-async function doTick(teamId, gameId) {
-  console.log("Starting game tick for " + gameId)
-  //check if we got a good id
-  if (!teamId) {
-    return new Error("Invalid teamId")
-  }
-
-  //check if we got a good id
-  if (!gameId) {
-    return new Error("Invalid gameId")
-  }
-
-  const game = await infightDB.Game.findByPk(gameId, { include: { all: true } });
-  if (!game) {
-    return new Error("Invalid gameId")
-  }
-
-  if (game.status != 'active') {
-    return new Error("Game is not ready to be ticked")
-  }
-
-  const guild = await infightDB.Guild.findByPk(teamId)
-  if (!guild) {
-    return new Error("Invalid teamId")
-  }
-
-  try {
-    const thisMoment = new Date()
-    const nextTick = new Date(+new Date(thisMoment) + game.minutesPerActionDistro * 60 * 1000)
-    game.nextTickTime = nextTick
-    const gameSaved = await game.save()
-
-    const [results, metadata] = await infightDB.sequelize.query('UPDATE "GamePlayers" SET actions = actions + 1 WHERE "GameId" = ? AND status = ?', {
-      replacements: [game.id, 'alive']
-    })
-  } catch (error) {
-    return new Error("Game tick failed")
-  }
-
-  const guildChannel = ifDisco.channels.cache.get(guild.gameChannelId)
-  guildChannel.send("🚨 Infight gave AP!")
-  broadcastUpdate(game.id)
-
-  return game
-}
-
 app.post('/games/:teamId/:gameId/tick', async (req, res) => {
-  //TODO: this needs AUTH consideration
-  result = await doTick(req.params.teamId, req.params.gameId)
+  //TODO: this needs DEV MODE disabling
 
-  if (result instanceof Error) {
-    res.status(400).send(result)
-  } else {
+  const game = await infightDB.Game.findByPk(req.params.gameId)
+  if (null == game) {
+    return res.status(400).send('Game not found')
+  }
+  try {
+    const result = await game.doTick()
     res.send(result)
+  } catch (error) {
+    res.status(400).send(error)
   }
 })
 
-app.post('/games/:teamId/:gameId/hearts', async (req, res) => {
-  //TODO: this needs AUTH consideration
+app.post('/games/:teamId/:gameId/hearts', async (req, res) => { //TODO this needs to be implemented
+  //TODO: this needs DEV MODE disabling
   
   console.log("Starting heart drop for " + gameId)
   //check if we got a good id
@@ -493,8 +466,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
       await gp.save()
       await move.save()
 
-      guildChannel.send("<@" + gp.PlayerId + "> 🔧 **upgraded** their range to " + gp.range + "!")
-      broadcastUpdate(game.id)
+      game.notify("<@" + gp.PlayerId + "> 🔧 **upgraded** their range to " + gp.range + "!")
 
       return res.send("Upgraded!")
     }
@@ -509,9 +481,8 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
       await gp.save()
       await move.save()
 
-      guildChannel.send("<@" + gp.PlayerId + "> ❤️ **healed** to **" + gp.health + "**!")
-      broadcastUpdate(game.id)
-
+      game.notify("<@" + gp.PlayerId + "> ❤️ **healed** to **" + gp.health + "**!")
+      
       return res.send("Upgraded!")
     }
 
@@ -527,8 +498,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
       await gp.save()
       await move.save()
 
-      guildChannel.send("<@" + gp.PlayerId + "> 🏃 moved!")
-      broadcastUpdate(game.id)
+      game.notify("<@" + gp.PlayerId + "> 🏃 moved!")
 
       return res.send("Moved!")
     }
@@ -546,8 +516,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
       move.targetGamePlayerId = targetGamePlayer.id
       await move.save()
 
-      guildChannel.send("<@" + gp.PlayerId + "> (" + gp.actions + " AP) 🤝 gave an AP to <@" + targetGamePlayer.PlayerId + "> (" + targetGamePlayer.actions + " AP)!")
-      broadcastUpdate(game.id)
+      game.notify("<@" + gp.PlayerId + "> (" + gp.actions + " AP) 🤝 gave an AP to <@" + targetGamePlayer.PlayerId + "> (" + targetGamePlayer.actions + " AP)!")
 
       return res.send("Gave AP!")
     }
@@ -572,8 +541,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
       move.targetGamePlayerId = targetGamePlayer.id
       await move.save()
 
-      guildChannel.send("<@" + gp.PlayerId + "> (" + gp.health + " HP) 💌 gave an HP to <@" + targetGamePlayer.PlayerId + "> (" + targetGamePlayer.health + " HP)!")
-      broadcastUpdate(game.id)
+      game.notify("<@" + gp.PlayerId + "> (" + gp.health + " HP) 💌 gave an HP to <@" + targetGamePlayer.PlayerId + "> (" + targetGamePlayer.health + " HP)!")
 
       return res.send("Gave HP!")
     }
@@ -599,12 +567,11 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
       move.targetGamePlayerId = targetGamePlayer.id
       await move.save()
 
-      if (targetGamePlayer.health > 0) {
-        guildChannel.send("<@" + gp.PlayerId + "> **💥shot💥** <@" + targetGamePlayer.PlayerId + ">, reducing their health to **" + targetGamePlayer.health + "**!")
-      } else {
-        guildChannel.send("<@" + gp.PlayerId + "> **☠️ ELIMINATED ☠️** <@" + targetGamePlayer.PlayerId + ">  and stole their AP!")
+      let shotMsg = "<@" + gp.PlayerId + "> **💥shot💥** <@" + targetGamePlayer.PlayerId + ">, reducing their health to **" + targetGamePlayer.health + "**!"
+      if (targetGamePlayer.health == 0) {
+        shotMsg = "<@" + gp.PlayerId + "> **☠️ ELIMINATED ☠️** <@" + targetGamePlayer.PlayerId + ">  and stole their AP!"
       }
-      broadcastUpdate(game.id)
+      game.notify(shotMsg)
 
       //check if game is over
       let countAlive = 0
@@ -622,8 +589,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
         guild.currentGameId = null
         await guild.save()
 
-        guildChannel.send("<@" + gp.PlayerId + "> **_WON THE GAME!!_**")
-        broadcastUpdate(game.id)
+        game.notify("<@" + gp.PlayerId + "> **_WON THE GAME!!_**")
 
         //TODO: after action report
       }
@@ -638,7 +604,6 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
     return res.status(400).send("Action failed")
   }
 
-  res.send(game)
 })
 
 // repeating check to see what games are due for an action point distro
@@ -656,8 +621,7 @@ setInterval(async () => {
 
   for (let i = 0; i < gamesNeedingTicks.length; i++) {
     const game = gamesNeedingTicks[i];
-    doTick(game.GuildId, game.id)
-
+    game.doTick()
   }
 }, 1000 * 30) //how often to query for games that need AP distro
 

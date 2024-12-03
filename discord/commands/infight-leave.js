@@ -36,7 +36,7 @@ module.exports = {
 			const existingGame = await guild.getCurrentGame()
 			if (existingGame != null) {
 				await existingGame.removePlayer(pg.PlayerId)
-				gameEventChannels[existingGame.id].broadcast('update')
+				existingGame.notify("<@" + pg.PlayerId + "> bailed!")
 			}
 
 			return interaction.reply("You're off the roster for the next Infight.")
