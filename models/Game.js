@@ -158,7 +158,7 @@ module.exports = function (sequelize) {
                 })
 
                 let heartMsg = ''
-                const heartChance = 0.25
+                const heartChance = 0.33
                 if (Math.random() > heartChance) {
                     await this.addHeart()
                     heartMsg = " A heart appeared! 💗 Is it nearby?"
@@ -344,7 +344,7 @@ module.exports = function (sequelize) {
                 allowNull: false,
                 defaultValue: 20
             },
-            winningPlayer: {
+            winningPlayerId: {
                 type: DataTypes.INTEGER,
                 allowNull: true
             },

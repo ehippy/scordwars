@@ -446,7 +446,18 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
         const stolenHP = targetGamePlayer.actions
         gp.actions += stolenHP  // give the killer the AP of the killed
         targetGamePlayer.actions = 0
+        targetGamePlayer.deathTime = new Date()
       }
+
+      //check if game is over
+      let countAlive = 0
+      for (let i = 0; i < game.GamePlayers.length; i++) {
+        const somePlayer = game.GamePlayers[i];
+        if (somePlayer.status == 'alive') {
+          countAlive++
+        }
+      }
+      targetGamePlayer.winPosition = countAlive + 1
       await targetGamePlayer.save()
 
       gp.actions -= 1
@@ -461,15 +472,10 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
       }
       game.notify(shotMsg)
 
-      //check if game is over
-      let countAlive = 0
-      for (let i = 0; i < game.GamePlayers.length; i++) {
-        const somePlayer = game.GamePlayers[i];
-        if (somePlayer.status == 'alive') {
-          countAlive++
-        }
-      }
       if (countAlive == 1) {
+        gp.winPosition = 1
+        await gp.save()
+
         game.status = 'won'
         game.winningPlayerId = gp.id
         await game.save()
