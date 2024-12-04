@@ -109,6 +109,11 @@ module.exports = function (sequelize) {
             }
             //position the players
             const gamePlayers = await this.getGamePlayers()
+
+            const autoBoardSize = this.sequelize.models.Game.calculateBoardSize(gamePlayers.length, 0.15)
+            this.boardHeight = autoBoardSize
+            this.boardWidth = autoBoardSize
+
             for (let index = 0; index < gamePlayers.length; index++) {
                 const startingPos = await this.#findClearSpace(gamePlayers);
                 gamePlayers[index].positionX = startingPos[0]
@@ -174,85 +179,85 @@ module.exports = function (sequelize) {
 
         static async createNewGame(guildId, boardHeight, boardWidth, cycleMinutes) {
             try {
-          
-              // check if there's an active game
-              const guild = await this.sequelize.models.Guild.findByPk(guildId)
-              if (guild === null) {
-                throw new Exception("Invalid guild")
-              }
-          
-              if (guild.currentGameId) {
-                throw new Exception("Already a game in progress")
-              }
-          
-              // check for input size, cycle time, 
-              if (!cycleMinutes || cycleMinutes < 1 || cycleMinutes > 9999) {
-                throw new Exception("cycleMinutes is not valid")
-              }
-          
-              if (!boardHeight || boardHeight < 5 || boardHeight > 100) {
-                throw new Exception("boardHeight is not valid")
-              }
-          
-              if (!boardWidth || boardWidth < 5 || boardWidth > 100) {
-                throw new Exception("boardWidth is not valid")
-              }
-          
-              // get all the relevant active players...?
-          
-              // create the game
-              const game = this.build({
-                minutesPerActionDistro: cycleMinutes,
-                boardWidth: boardWidth,
-                boardHeight: boardHeight,
-                GuildId: guild.id,
-                minimumPlayerCount: guild.minimumPlayerCount
-              })
-          
-              await game.save()
-              console.log('created game ' + game.id, game)
-          
-              //set the current game on the Guild
-              guild.currentGameId = game.id
-              await guild.save()
-          
-              //find all opted-in players and add them to the game
-              const optedInGuildMembers = await this.sequelize.models.PlayerGuild.findAll({
-                where: {
-                  GuildId: guild.id,
-                  isOptedInToPlay: true
-                }
-              })
-              
-              for (let i = 0; i < optedInGuildMembers.length; i++) {
-                const gm = optedInGuildMembers[i];
-                await game.addPlayer(gm.PlayerId)
-              }
-          
-          
-              // send some hype abouut the muster period)
-              game.notify("Alright! 🃏 [New Infight Game](" + game.getUrl() + ") created with " + optedInGuildMembers.length + " players!")
-          
-              //choose about starting in an hour, or waiting for more to join
-              if (optedInGuildMembers.length < game.minimumPlayerCount) {
-                game.notify("To start [the new game](" + game.getUrl() + "), there need to be at least " + game.minimumPlayerCount + " players. Ask a friend to `/infight-join`!")
-              } else {
-                game.checkShouldStartGame()
-              }
-          
 
-              return game
-          
+                // check if there's an active game
+                const guild = await this.sequelize.models.Guild.findByPk(guildId)
+                if (guild === null) {
+                    throw new Exception("Invalid guild")
+                }
+
+                if (guild.currentGameId) {
+                    throw new Exception("Already a game in progress")
+                }
+
+                // check for input size, cycle time, 
+                if (!cycleMinutes || cycleMinutes < 1 || cycleMinutes > 9999) {
+                    throw new Exception("cycleMinutes is not valid")
+                }
+
+                if (!boardHeight || boardHeight < 5 || boardHeight > 100) {
+                    throw new Exception("boardHeight is not valid")
+                }
+
+                if (!boardWidth || boardWidth < 5 || boardWidth > 100) {
+                    throw new Exception("boardWidth is not valid")
+                }
+
+                // get all the relevant active players...?
+
+                // create the game
+                const game = this.build({
+                    minutesPerActionDistro: cycleMinutes,
+                    boardWidth: boardWidth,
+                    boardHeight: boardHeight,
+                    GuildId: guild.id,
+                    minimumPlayerCount: guild.minimumPlayerCount
+                })
+
+                await game.save()
+                console.log('created game ' + game.id, game)
+
+                //set the current game on the Guild
+                guild.currentGameId = game.id
+                await guild.save()
+
+                //find all opted-in players and add them to the game
+                const optedInGuildMembers = await this.sequelize.models.PlayerGuild.findAll({
+                    where: {
+                        GuildId: guild.id,
+                        isOptedInToPlay: true
+                    }
+                })
+
+                for (let i = 0; i < optedInGuildMembers.length; i++) {
+                    const gm = optedInGuildMembers[i];
+                    await game.addPlayer(gm.PlayerId)
+                }
+
+
+                // send some hype abouut the muster period)
+                game.notify("Alright! 🃏 [New Infight Game](" + game.getUrl() + ") created with " + optedInGuildMembers.length + " players!")
+
+                //choose about starting in an hour, or waiting for more to join
+                if (optedInGuildMembers.length < game.minimumPlayerCount) {
+                    game.notify("To start [the new game](" + game.getUrl() + "), there need to be at least " + game.minimumPlayerCount + " players. Ask a friend to `/infight-join`!")
+                } else {
+                    game.checkShouldStartGame()
+                }
+
+
+                return game
+
             } catch (error) {
-              t.rollback()
-              throw error
+                console.log('CreateNewGame error', error)
+                throw error
             }
         }
 
         async doMove() {
             //TODO: move doMove here from app.js
         }
-        
+
         async addHeart() {
             const gamePlayers = await this.getGamePlayers()
             const freeSpace = await this.#findClearSpace(gamePlayers)
@@ -268,70 +273,83 @@ module.exports = function (sequelize) {
             const saveResult = await this.save()
             //console.log('saveResult', saveResult)
         }
-        
+
         static async startGamesNeedingToStart() {
             let gamesNeedingStarts = await this.findAll({
                 where: {
-                  startTime: {
-                    [Op.lt]: new Date(),
-                  },
-                  status: 'new'
+                    startTime: {
+                        [Op.lt]: new Date(),
+                    },
+                    status: 'new'
                 },
-              })
-            
-              for (let i = 0; i < gamesNeedingStarts.length; i++) {
+            })
+
+            for (let i = 0; i < gamesNeedingStarts.length; i++) {
                 const game = gamesNeedingStarts[i];
                 game.startGame()
-              }
+            }
         }
 
         static async tickGamesNeedingTick() {
             let gamesNeedingTicks = await this.findAll({
                 where: {
-                  nextTickTime: {
-                    [Op.lt]: new Date(),
-                  },
-                  status: 'active'
+                    nextTickTime: {
+                        [Op.lt]: new Date(),
+                    },
+                    status: 'active'
                 },
-              })
-            
-              for (let i = 0; i < gamesNeedingTicks.length; i++) {
+            })
+
+            for (let i = 0; i < gamesNeedingTicks.length; i++) {
                 const game = gamesNeedingTicks[i];
                 game.doTick()
-              }
+            }
+        }
+
+        static calculateBoardSize(playerCount, desiredDensity = 0.2) {
+            if (playerCount <= 0 || desiredDensity <= 0) {
+                throw new Exception("calculateBoardSize Player count and density must be greater than zero.");
+            }
+        
+            // Calculate the required board area for the given density
+            const requiredArea = playerCount / desiredDensity;
+
+            // Determine the side length of the square board
+            const boardSize = Math.ceil(Math.sqrt(requiredArea));
+            return boardSize;
         }
 
         async sendAfterActionReport() {
 
-        //after action report
-        let allPlayers = await this.sequelize.models.GamePlayer.findAll({
-            where: {
-                GameId: this.id
-            },
-            order:[
-              ['winPosition', 'ASC']
-            ]
-          })
-          let leaderBoard = "### 🏆 Game Rankings 🏆"
-          allPlayers.forEach(ep => {
-            leaderBoard += `\n`
-            switch (ep.winPosition) {
-              case 1:
-                leaderBoard += '🥇'
-                break;
-              case 2:
-                leaderBoard += '🥈'
-                break;
-              case 3:
-                leaderBoard += '🥉'
-                break;
-              default:
-                leaderBoard += `*${ep.winPosition}.*`
-                break
-            }
-            leaderBoard += ` <@${ep.PlayerId}>`
-          })
-          this.notify(leaderBoard)
+            //after action report
+            let allPlayers = await this.sequelize.models.GamePlayer.findAll({
+                where: {
+                    GameId: this.id
+                },
+                order: [
+                    ['winPosition', 'ASC']
+                ]
+            })
+            let leaderBoard = "### 🏆 Game Rankings 🏆"
+            allPlayers.forEach(ep => {
+                leaderBoard += `\n`
+                switch (ep.winPosition) {
+                    case 1:
+                        leaderBoard += '🥇'
+                        break;
+                    case 2:
+                        leaderBoard += '🥈'
+                        break;
+                    case 3:
+                        leaderBoard += '🥉'
+                        break;
+                    default:
+                        leaderBoard += `*${ep.winPosition}.*`
+                        break
+                }
+                leaderBoard += ` <@${ep.PlayerId}>`
+            })
+            this.notify(leaderBoard)
         }
     }
 
