@@ -110,7 +110,7 @@ module.exports = function (sequelize) {
             //position the players
             const gamePlayers = await this.getGamePlayers()
 
-            const autoBoardSize = this.sequelize.models.Game.calculateBoardSize(gamePlayers.length, 0.15)
+            const autoBoardSize = this.sequelize.models.Game.calculateBoardSize(gamePlayers.length, 0.1)
             this.boardHeight = autoBoardSize
             this.boardWidth = autoBoardSize
 
