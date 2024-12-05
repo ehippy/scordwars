@@ -1,6 +1,6 @@
-# scordwars
+# infight
 
-Server Component for infight.io.
+Server Component for [infight.io](https://infight.io). It runs all the game logic, and talks to Discord.
 
 ## Configure Local
 ### Node environment variables
