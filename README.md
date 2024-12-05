@@ -23,6 +23,8 @@ SESSION_SECRET=""
 
 # The base url of the UI site
 UI_BASE_URL="http://localhost:5173"
+
+NODE_ENV=development
 ```
 
 
