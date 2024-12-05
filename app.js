@@ -223,7 +223,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
 
   } catch (error) {
     console.log("Action failed", error)
-    return res.status(400).send("Action failed")
+    return res.status(400).send(error.message)
   }
 
 })

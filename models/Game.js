@@ -7,7 +7,7 @@ module.exports = function (sequelize) {
 
         async addPlayer(playerId) {
             if (this.status != 'new') {
-                throw new Exception("Cannot add a player if the game's not new")
+                throw new Error("Cannot add a player if the game's not new")
             }
             const existingPlayers = await this.sequelize.models.GamePlayer.findAll({
                 where: {
@@ -28,7 +28,7 @@ module.exports = function (sequelize) {
         }
         async removePlayer(playerId) {
             if (this.status != 'new') {
-                throw new Exception("Cannot remove a player if the game's not new")
+                throw new Error("Cannot remove a player if the game's not new")
             }
             const existingPlayer = await this.sequelize.models.GamePlayer.findOne({
                 where: {
@@ -97,7 +97,7 @@ module.exports = function (sequelize) {
                 }
 
                 if (loopCount > 10000) {
-                    throw new Exception("findClearSpace ran too long")
+                    throw new Error("findClearSpace ran too long")
                 }
             }
         }
@@ -105,7 +105,7 @@ module.exports = function (sequelize) {
         async startGame() {
 
             if (this.status != 'new') {
-                throw new Exception("Game isn't new, and can't be started")
+                throw new Error("Game isn't new, and can't be started")
             }
             //position the players
             const gamePlayers = await this.getGamePlayers()
@@ -144,12 +144,12 @@ module.exports = function (sequelize) {
             //console.log("Starting game tick for " + this.id)
 
             if (this.status != 'active') {
-                throw new Exception("Game is not active")
+                throw new Error("Game is not active")
             }
 
             const guild = await this.sequelize.models.Guild.findByPk(this.GuildId)
             if (!guild) {
-                throw new Exception("Invalid teamId")
+                throw new Error("Invalid teamId")
             }
 
             try {
@@ -183,24 +183,24 @@ module.exports = function (sequelize) {
                 // check if there's an active game
                 const guild = await this.sequelize.models.Guild.findByPk(guildId)
                 if (guild === null) {
-                    throw new Exception("Invalid guild")
+                    throw new Error("Invalid guild")
                 }
 
                 if (guild.currentGameId) {
-                    throw new Exception("Already a game in progress")
+                    throw new Error("Already a game in progress")
                 }
 
                 // check for input size, cycle time, 
                 if (!cycleMinutes || cycleMinutes < 1 || cycleMinutes > 9999) {
-                    throw new Exception("cycleMinutes is not valid")
+                    throw new Error("cycleMinutes is not valid")
                 }
 
                 if (!boardHeight || boardHeight < 5 || boardHeight > 100) {
-                    throw new Exception("boardHeight is not valid")
+                    throw new Error("boardHeight is not valid")
                 }
 
                 if (!boardWidth || boardWidth < 5 || boardWidth > 100) {
-                    throw new Exception("boardWidth is not valid")
+                    throw new Error("boardWidth is not valid")
                 }
 
                 // get all the relevant active players...?
@@ -259,7 +259,7 @@ module.exports = function (sequelize) {
 
 
             if (this.status != 'active') {
-                throw new Exception("Game is not active")
+                throw new Error("Game is not active")
             }
 
 
@@ -272,26 +272,26 @@ module.exports = function (sequelize) {
                 }
             }
             if (!gp) {
-                throw new Exception("You aren't in this game")
+                throw new Error("You aren't in this game")
             }
 
             if (gp.actions < 1 && action != 'giveHP') {
-                throw new Exception("You don't have enough AP")
+                throw new Error("You don't have enough AP")
             }
 
             if (gp.status != 'alive') {
-                throw new Exception("You're not alive.")
+                throw new Error("You're not alive.")
             }
 
             const guild = await this.sequelize.models.Guild.findByPk(this.GuildId)
             if (!guild) {
-                throw new Exception("You aren't in this game")
+                throw new Error("You aren't in this game")
             }
 
 
             if (Number.isInteger(targetX) && Number.isInteger(targetY)) {
                 if (targetX < 0 || targetX >= this.boardWidth || targetY < 0 || targetY > this.boardHeight - 1) {
-                    throw new Exception("Action is off the board")
+                    throw new Error("Action is off the board")
                 }
             }
 
@@ -308,14 +308,14 @@ module.exports = function (sequelize) {
             const currentY = gp.positionY
             if (['move', 'shoot', 'giveAP', 'giveHP'].includes(action)) {
                 if (Number.isNaN(targetX) || Number.isNaN(targetY)) {
-                    throw new Exception("Target is not numeric")
+                    throw new Error("Target is not numeric")
                 }
 
                 let testRange = 1
                 if (action != 'move') testRange = gp.range
 
                 if (targetX < currentX - testRange || targetX > currentX + testRange || targetY < currentY - testRange || targetY > currentY + testRange) {
-                    throw new Exception("That is out of range")
+                    throw new Error("That is out of range")
                 }
             }
 
@@ -331,7 +331,7 @@ module.exports = function (sequelize) {
 
             if (action == 'upgrade') {
                 if (gp.actions < 3) {
-                    throw new Exception("You don't have enough AP")
+                    throw new Error("You don't have enough AP")
                 }
                 gp.range += 1
                 gp.actions -= 3
@@ -346,7 +346,7 @@ module.exports = function (sequelize) {
 
             if (action == 'heal') {
                 if (gp.actions < 3) {
-                    throw new Exception("You don't have enough AP")
+                    throw new Error("You don't have enough AP")
                 }
                 gp.health += 1
                 gp.actions -= 3
@@ -361,7 +361,7 @@ module.exports = function (sequelize) {
 
             if (action == 'move') {
                 if (targetGamePlayer != null) {
-                    throw new Exception("A player is already in that space")
+                    throw new Error("A player is already in that space")
                 }
 
                 // did they collect a heart
@@ -534,7 +534,7 @@ module.exports = function (sequelize) {
                 return "Shot!"
             }
 
-            throw new Exception("Action Not implemented", action)
+            throw new Error("Action Not implemented", action)
         }
 
 
@@ -589,7 +589,7 @@ module.exports = function (sequelize) {
 
         static calculateBoardSize(playerCount, desiredDensity = 0.2) {
             if (playerCount <= 0 || desiredDensity <= 0) {
-                throw new Exception("calculateBoardSize Player count and density must be greater than zero.");
+                throw new Error("calculateBoardSize Player count and density must be greater than zero.");
             }
 
             // Calculate the required board area for the given density
