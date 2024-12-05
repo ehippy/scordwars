@@ -80,8 +80,10 @@ app.get('/myTeams', verifyToken, async (req, res) => {
 })
 
 app.post('/games/:teamId/new', verifyToken, async (req, res) => {
+  if (process.env.NODE_ENV !== 'development') {
+    return res.status(403).send('This endpoint is only available in development mode');
+  }
 
-  //TODO: lock this to only in DEV, this should normally be done in discord with /infight-start
   try {
     const newGame = await infightDB.Game.createNewGame(req.params.teamId, req.body.boardSize, req.body.boardSize, req.body.cycleMinutes)
     res.send(newGame)
@@ -128,7 +130,11 @@ app.get("/games/:teamId/:gameId/events", async (req, res) => {
 
 //this is a development endpoint to kill a game
 app.delete('/games/:teamId/:gameId', async (req, res) => {
-  //TODO: this needs to be disabled when not in DEV
+
+  if (process.env.NODE_ENV !== 'development') {
+    return res.status(403).send('This endpoint is only available in development mode');
+  }
+
   //check if we got a good id
   if (!req.params.teamId) {
     return res.status(404).send(new Error("Invalid teamId"))
@@ -154,8 +160,9 @@ app.delete('/games/:teamId/:gameId', async (req, res) => {
 
 //this is a development endpoing to start a game before it automatically does
 app.post('/games/:teamId/:gameId/start', async (req, res) => {
-  //TODO: this needs AUTH consideration
-  //check if we got a good id
+  if (process.env.NODE_ENV !== 'development') {
+    return res.status(403).send('This endpoint is only available in development mode');
+  }
 
   const game = await infightDB.Game.findByPk(req.params.gameId);
   if (!game) {
@@ -173,7 +180,9 @@ app.post('/games/:teamId/:gameId/start', async (req, res) => {
 
 //this is a development endpoint to force a tick before it automatically does one
 app.post('/games/:teamId/:gameId/tick', async (req, res) => {
-  //TODO: this needs DEV MODE disabling
+  if (process.env.NODE_ENV !== 'development') {
+    return res.status(403).send('This endpoint is only available in development mode');
+  }
 
   const game = await infightDB.Game.findByPk(req.params.gameId)
   if (null == game) {
@@ -202,7 +211,6 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
   if (player === null) {
     return res.status(404).send("User not logged in")
   }
-  //TODO: // confirm player is in game, and logged in
 
   const game = await infightDB.Game.findByPk(req.params.gameId, { include: { all: true } });
   if (!game) {
