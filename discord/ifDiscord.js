@@ -70,6 +70,7 @@ module.exports = function (db) {
         channel.send("👋 Hiya gang! I'm infight.io, I'm a game you can play while you idle in Discord!")
 
         //create an initial game?
+        db.Game.createNewGame(g.id, 10, 10, 60*24)
     })
 
     //removed from a server
@@ -82,8 +83,10 @@ module.exports = function (db) {
         } else {
             g.gameChannelId = null
             g.isConnected = false
+            g.currentGameId = null
             await g.save()
             console.log('Guild disconnect successful');
+            //todo kill active game
         }
     })
 
