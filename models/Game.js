@@ -107,12 +107,25 @@ module.exports = function (sequelize) {
             if (this.status != 'new') {
                 throw new Error("Game isn't new, and can't be started")
             }
+
+            const guild = await this.sequelize.models.Guild.findByPk(this.GuildId)
+            if (!guild) {
+                throw new Error("Invalid teamId")
+            }
+
             //position the players
             const gamePlayers = await this.getGamePlayers()
+            const userRequestedBoardSize = guild.boardSize
 
-            const autoBoardSize = this.sequelize.models.Game.calculateBoardSize(gamePlayers.length, 0.1)
-            this.boardHeight = autoBoardSize
-            this.boardWidth = autoBoardSize
+            if (userRequestedBoardSize^2 < gamePlayers.length) { // if the board is too small, auto-size it
+                const autoBoardSize = this.sequelize.models.Game.calculateBoardSize(gamePlayers.length, 0.1)
+                this.boardHeight = autoBoardSize
+                this.boardWidth = autoBoardSize
+            } else {
+                this.boardHeight = userRequestedBoardSize
+                this.boardWidth = userRequestedBoardSize
+            }
+            this.minutesPerActionDistro = guild.actionTimerMinutes
 
             for (let index = 0; index < gamePlayers.length; index++) {
                 const startingPos = await this.#findClearSpace(gamePlayers);
