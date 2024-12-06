@@ -146,15 +146,8 @@ app.delete('/games/:teamId/:gameId', async (req, res) => {
   }
 
   const game = await infightDB.Game.findByPk(req.params.gameId, { include: { all: true } });
-  const delResult = await game.destroy();
+  game.cancelAndStartNewGame()
 
-  const guild = await infightDB.Guild.findByPk(req.params.teamId)
-  if (guild.currentGameId == req.params.gameId) {
-    guild.currentGameId = null
-    const guildSave = await guild.save()
-  }
-
-  game.notify("Game " + req.params.gameId + " deleted by an admin. Sorry about that!")
   res.send(game)
 })
 
@@ -203,7 +196,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
   const targetX = req.body.targetX
   const targetY = req.body.targetY
 
-  if (!['move', 'shoot', 'giveAP', 'giveHP', 'upgrade', 'heal'].includes(action)) {
+  if (!['move', 'shoot', 'giveAP', 'giveHP', 'upgrade', 'heal', 'juryVote'].includes(action)) {
     return res.status(400).send("Action '" + action + "' not supported")
   }
 

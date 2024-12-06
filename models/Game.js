@@ -171,8 +171,31 @@ module.exports = function (sequelize) {
                 this.nextTickTime = nextTick
                 const gameSaved = await this.save()
 
-                const [results, metadata] = await this.sequelize.query('UPDATE "GamePlayers" SET actions = actions + 1 WHERE "GameId" = ? AND status = ?', {
-                    replacements: [this.id, 'alive']
+                //do jury vote count
+                let votedGamePlayer = await this.sequelize.models.GamePlayer.findOne({
+                    where: {
+                        GameId: this.id,
+                        juryVotesAgainst: {
+                            [Op.gt]: 0
+                        }
+                    },
+                    order: [
+                        ['juryVotesAgainst', 'DESC']
+                    ]
+                })
+
+                let playerIdToSkip = -1
+                if (votedGamePlayer) {
+                    this.notify("👻 **The dead have spoken!** <@" + votedGamePlayer.PlayerId + "> has been **haunted** by the jury! 👻")
+                    playerIdToSkip = votedGamePlayer.id
+                }
+
+                const [results, metadata] = await this.sequelize.query('UPDATE "GamePlayers" SET actions = actions + 1, juryVotesAgainst = 0 WHERE "GameId" = ? AND status = ? AND id <> ?', {
+                    replacements: [this.id, 'alive', playerIdToSkip]
+                })
+
+                await this.sequelize.query('UPDATE "GamePlayers" SET juryVotesToSpend = 1 WHERE "GameId" = ? AND status = ?', {
+                    replacements: [this.id, 'dead']
                 })
 
                 let heartMsg = ''
@@ -190,7 +213,7 @@ module.exports = function (sequelize) {
 
         }
 
-        static async createNewGame(guildId, boardHeight, boardWidth, cycleMinutes) {
+        static async createNewGame(guildId) {
             try {
 
                 // check if there's an active game
@@ -203,26 +226,11 @@ module.exports = function (sequelize) {
                     throw new Error("Already a game in progress")
                 }
 
-                // check for input size, cycle time, 
-                if (!cycleMinutes || cycleMinutes < 1 || cycleMinutes > 9999) {
-                    throw new Error("cycleMinutes is not valid")
-                }
-
-                if (!boardHeight || boardHeight < 5 || boardHeight > 100) {
-                    throw new Error("boardHeight is not valid")
-                }
-
-                if (!boardWidth || boardWidth < 5 || boardWidth > 100) {
-                    throw new Error("boardWidth is not valid")
-                }
-
-                // get all the relevant active players...?
-
                 // create the game
                 const game = this.build({
-                    minutesPerActionDistro: cycleMinutes,
-                    boardWidth: boardWidth,
-                    boardHeight: boardHeight,
+                    minutesPerActionDistro: guild.actionTimerMinutes,
+                    boardWidth: guild.boardSize,
+                    boardHeight: guild.boardSize,
                     GuildId: guild.id,
                     minimumPlayerCount: guild.minimumPlayerCount
                 })
@@ -267,6 +275,19 @@ module.exports = function (sequelize) {
             }
         }
 
+        async cancelAndStartNewGame() {
+            this.notify("⚠️ Game " + this.id + " deleted by an admin. Sorry about that! New game coming up!")
+            const delResult = await this.destroy();
+
+            const guild = await infightDB.Guild.findByPk(req.params.teamId)
+            if (guild.currentGameId == req.params.gameId) {
+                guild.currentGameId = null
+                const guildSave = await guild.save()
+            }
+
+            await this.sequelize.models.Game.createNewGame(guild.id)
+        }
+
         async doMove(player, action, targetX, targetY) {
             //TODO: move doMove here from app.js
 
@@ -292,7 +313,7 @@ module.exports = function (sequelize) {
                 throw new Error("You don't have enough AP")
             }
 
-            if (gp.status != 'alive') {
+            if (gp.status != 'alive' && action != 'juryVote') {
                 throw new Error("You're not alive.")
             }
 
@@ -319,16 +340,17 @@ module.exports = function (sequelize) {
             //for aimed actions, check range and target values
             const currentX = gp.positionX
             const currentY = gp.positionY
-            if (['move', 'shoot', 'giveAP', 'giveHP'].includes(action)) {
-                if (Number.isNaN(targetX) || Number.isNaN(targetY)) {
+            if (['move', 'shoot', 'giveAP', 'giveHP', 'juryVote'].includes(action)) {
+                if (!Number.isInteger(targetX) || !Number.isInteger(targetY)) {
                     throw new Error("Target is not numeric")
                 }
 
                 let testRange = 1
                 if (action != 'move') testRange = gp.range
-
-                if (targetX < currentX - testRange || targetX > currentX + testRange || targetY < currentY - testRange || targetY > currentY + testRange) {
-                    throw new Error("That is out of range")
+                if (action != 'juryVote') {
+                    if (targetX < currentX - testRange || targetX > currentX + testRange || targetY < currentY - testRange || targetY > currentY + testRange) {
+                        throw new Error("That is out of range")
+                    }
                 }
             }
 
@@ -341,6 +363,27 @@ module.exports = function (sequelize) {
                 }
             }
 
+
+            if (action == 'juryVote') {
+                if (gp.health > 0) {
+                    throw new Error("You need to be dead to vote")
+                }
+
+                if (gp.juryVotesToSpend == 0) {
+                    throw new Error("You've already voted")
+                }
+
+                gp.juryVotesToSpend = 0
+                targetGamePlayer.juryVotesAgainst += 1
+
+                await gp.save()
+                await targetGamePlayer.save()
+                await move.save()
+
+                this.notify("<@" + gp.PlayerId + "> 🗳️ **voted** to haunt someone! 👻")
+
+                return "Voted!"
+            }
 
             if (action == 'upgrade') {
                 if (gp.actions < 3) {

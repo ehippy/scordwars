@@ -50,6 +50,16 @@ module.exports = function (sequelize) {
             winPosition: {
                 type: DataTypes.INTEGER,
                 allowNull: true
+            },
+            juryVotesToSpend: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+                defaultValue: 0
+            },
+            juryVotesAgainst: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+                defaultValue: 0
             }
         },
         { sequelize }
