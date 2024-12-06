@@ -73,7 +73,6 @@ app.get('/myTeams', verifyToken, async (req, res) => {
   const player = await infightDB.Player.findByPk(req.user.id)
   if (player === null) {
     res.send('404')
-    next()
   }
 
   const guilds = await player.getGuilds()
