@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -7,6 +7,10 @@ module.exports = {
         .addIntegerOption(option => option.setName('set-action-timer-minutes').setDescription('The number of minutes between Action Points, between 15 and 2880'))
         .addIntegerOption(option => option.setName('set-board-size').setDescription('The width and height of the board, 0 for auto'))
         .addIntegerOption(option => option.setName('set-min-players').setDescription('The minimum number of players to start a game between 2 and 50'))
+        .addChannelOption(option =>
+            option.setName('set-channel')
+                .setDescription('Select the channel Infight posts to')
+                .addChannelTypes(ChannelType.GuildText))
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     ,
 
@@ -28,7 +32,7 @@ module.exports = {
                 return interaction.reply("That server wasn't found")
             }
 
-            const settingChanged = false
+            let settingChanged = false
             const actionTimerMinutes = interaction.options.getInteger('set-action-timer-minutes')
             if (actionTimerMinutes != null) {
                 if (actionTimerMinutes < 30 || actionTimerMinutes > 2880) {
@@ -55,6 +59,13 @@ module.exports = {
                 settingChanged = true
                 guild.minimumPlayerCount = minPlayers
             }
+
+            let newChannel = interaction.options.getChannel('set-channel')
+            if (newChannel != null) {
+                settingChanged = true
+                guild.gameChannelId = newChannel.id
+            }
+
             if (settingChanged) {
                 guild.save()
             }
@@ -69,8 +80,8 @@ Use the /infight-setting options to change these. These only affect future games
             return interaction.reply(manPage)
 
         } catch (error) {
-            console.log("Error completing /infight-join", error)
-            return interaction.reply("There was an error adding you to the roster")
+            console.log("Error completing /infight-setting", error)
+            return interaction.reply("There was an error with settings")
         }
 
     }
