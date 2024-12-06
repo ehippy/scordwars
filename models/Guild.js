@@ -46,7 +46,7 @@ module.exports = function (sequelize) {
             boardSize: {
                 type: DataTypes.INTEGER,
                 allowNull: false,
-                defaultValue: 0
+                defaultValue: 10
             },
             actionTimerMinutes: {
                 type: DataTypes.INTEGER,
