@@ -588,9 +588,7 @@ module.exports = function (sequelize) {
 
                     this.sendAfterActionReport()
 
-                    setTimeout(() => {
-                        this.sequelize.models.Game.createNewGame(this.GuildId, this.boardHeight, this.boardWidth, this.minutesPerActionDistro)
-                    }, 1000 * 60 * 2) //start a new game automatically after 2 min
+                    this.sequelize.models.Game.createNewGame(this.GuildId)
                 }
 
 
