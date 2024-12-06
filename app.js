@@ -4,10 +4,11 @@ require('dotenv').config()
 const authSettings = {
   discord_oauth2_client_id: process.env.DISCORD_OAUTH2_CLIENT_ID,
   discord_oauth2_client_secret: process.env.DISCORD_OAUTH2_CLIENT_SECRET,
-  discordCallbackURL: '/auth/discord/callback',
+  discordCallbackPath: '/auth/discord/callback',
   discordToken: process.env.DISCORD_BOT_TOKEN,
   sessionSecret: process.env.SESSION_SECRET,
-  uiUrl: process.env.UI_BASE_URL
+  uiUrl: process.env.UI_BASE_URL,
+  apiUrl: process.env.API_BASE_URL
 }
 
 const express = require('express')

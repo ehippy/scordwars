@@ -27,7 +27,7 @@ module.exports = function (app, settings, db) {
     passport.use(new DiscordStrategy({
         clientID: settings.discord_oauth2_client_id,
         clientSecret: settings.discord_oauth2_client_secret,
-        callbackURL: settings.discordCallbackURL,
+        callbackURL: settings.apiUrl + settings.discordCallbackPath,
         scope: scopes
     },
         async function (accessToken, refreshToken, profile, cb) { //TODO: test is this async thinger works?
@@ -48,7 +48,7 @@ module.exports = function (app, settings, db) {
 
     app.get('/auth/discord', passport.authenticate('discord'));
 
-    app.get(settings.discordCallbackURL, passport.authenticate('discord', {
+    app.get(settings.discordCallbackPath, passport.authenticate('discord', {
         failureRedirect: '/'
     }), function (req, res) {
         const user = req.session.passport.user
