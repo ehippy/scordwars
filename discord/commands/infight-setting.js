@@ -61,9 +61,9 @@ module.exports = {
 
             const manPage = `**Infight.io Settings for ${guild.name}**
 
-- \`ActionTimerMinutes\`: **${guild.actionTimerMinutes}**
-- \`BoardSize\`: **${guild.boardSize}**
-- \`MinPlayers\`: **${guild.minimumPlayerCount}**
+- \`Action Timer Minutes\`: **${guild.actionTimerMinutes}**
+- \`Board Size\`: **${guild.boardSize}**
+- \`Minimum Players\`: **${guild.minimumPlayerCount}**
 
 Use the /infight-setting options to change these. These only affect future games.`
             return interaction.reply(manPage)
