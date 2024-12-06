@@ -69,7 +69,7 @@ module.exports = {
             if (settingChanged) {
                 await guild.save()
                 let currentGame = guild.getCurrentGame()
-                if (currentGame == null && currentGame.status == 'new') {
+                if (currentGame != null && currentGame.status == 'new') {
                     currentGame.boardWidth = guild.boardSize
                     currentGame.boardHeight = guild.boardSize
                     currentGame.minutesPerActionDistro = guild.actionTimerMinutes
