@@ -1,4 +1,4 @@
-console.log("Starting scordwards server")
+console.log("Starting infight server")
 
 require('dotenv').config()
 const authSettings = {
