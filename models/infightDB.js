@@ -1,10 +1,54 @@
-const { Sequelize, DataTypes, Model } = require('sequelize');
-const sequelize = new Sequelize(process.env.POSTGRES_CONN, {
-    logging: false
-})
+const { Entity, Service } = require("electrodb");
+
+import DynamoDB from "aws-sdk/clients/dynamodb";
+
+const client = new DynamoDB.DocumentClient();
+
+// highlight-next-line
+const table = "Infight";
+
+
 
 // Players and Guilds represent peoples' Discord Accounts, Discord Guilds (servers), and their associations
-const Player = require('./Player')(sequelize)
+const Player = new Entity(
+    {
+      model: {
+        entity: "player",
+        version: "1",
+        service: "infight",
+      },
+      attributes: {
+        playerId: {
+          type: "string",
+        },
+        name: {
+          type: "string",
+          required: true,
+        },
+        avatar: {
+            type: "string",
+          required: true,
+        },
+      },
+      indexes: {
+        byId: {
+          pk: {
+            // highlight-next-line
+            field: "pk",
+            composite: ["playerId"],
+          },
+          sk: {
+            // highlight-next-line
+            field: "sk",
+            composite: [],
+          },
+        }
+      },
+      // add your DocumentClient and TableName as a second parameter
+    },
+    { client, table },
+  );
+
 const Guild = require('./Guild')(sequelize)
 const PlayerGuild = require('./PlayerGuild')(sequelize);
 Guild.belongsToMany(Player, { through: PlayerGuild });
