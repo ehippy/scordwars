@@ -462,7 +462,7 @@ module.exports = function (sequelize) {
 
             if (action == 'giveAP') {
                 if (targetGamePlayer == null) {
-                    return res.status(400).send("There's no player at that target to gift")
+                    throw new Error("There's no player at that target to gift")
                 }
 
                 targetGamePlayer.actions += 1
@@ -480,11 +480,11 @@ module.exports = function (sequelize) {
 
             if (action == 'giveHP') {
                 if (targetGamePlayer == null) {
-                    return res.status(400).send("There's no player at that target to gift")
+                    throw new Error("There's no player at that target to gift")
                 }
 
                 if (gp.health < 2) {
-                    return res.status(400).send("You don't have enough health to give")
+                    throw new Error("You don't have enough health to give")
                 }
 
                 targetGamePlayer.health += 1
@@ -533,11 +533,11 @@ module.exports = function (sequelize) {
             if (action == 'shoot') {
 
                 if (!targetGamePlayer) {
-                    return res.status(400).send("No player at that position")
+                    throw new Error("No player at that position")
                 }
 
                 if (targetGamePlayer.health <= 0) {
-                    return res.status(400).send("They're dead, Jim!")
+                    throw new Error("They're dead, Jim!")
                 }
 
                 targetGamePlayer.health -= 1
