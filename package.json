@@ -4,7 +4,7 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "test": "asdf"
+    "start": "node app.js"
   },
   "author": "fj",
   "license": "ISC",
