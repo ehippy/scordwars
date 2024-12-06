@@ -28,11 +28,13 @@ module.exports = {
                 return interaction.reply("That server wasn't found")
             }
 
+            const settingChanged = false
             const actionTimerMinutes = interaction.options.getInteger('set-action-timer-minutes')
             if (actionTimerMinutes != null) {
                 if (actionTimerMinutes < 30 || actionTimerMinutes > 2880) {
                     return interaction.reply("ActionTimerMinutes must be between 30 and 2880")
                 }
+                settingChanged = true
                 guild.actionTimerMinutes = actionTimerMinutes
             }
 
@@ -41,6 +43,7 @@ module.exports = {
                 if (boardSize < 0 || boardSize > 30) {
                     return interaction.reply("BoardSize must be between 0 and 30")
                 }
+                settingChanged = true
                 guild.boardSize = boardSize
             }
 
@@ -49,9 +52,12 @@ module.exports = {
                 if (minPlayers < 2 || minPlayers > 50) {
                     return interaction.reply("MinPlayers must be between 2 and 50")
                 }
+                settingChanged = true
                 guild.minimumPlayerCount = minPlayers
             }
-            await guild.save()
+            if (settingChanged) {
+                guild.save()
+            }
 
             const manPage = `**Infight.io Settings for ${guild.name}**
 
