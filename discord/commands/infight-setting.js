@@ -67,7 +67,8 @@ module.exports = {
             }
 
             if (settingChanged) {
-                guild.save()
+                await guild.save()
+                return interaction.reply("Setting updated!")
             }
 
             const manPage = `**Infight.io Settings for ${guild.name}**
@@ -81,7 +82,7 @@ Use the /infight-setting options to change these. These only affect future games
 
         } catch (error) {
             console.log("Error completing /infight-setting", error)
-            return interaction.reply("There was an error with settings")
+            return interaction.reply("There was an error with infight-setting")
         }
 
     }
