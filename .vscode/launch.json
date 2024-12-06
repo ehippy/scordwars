@@ -16,11 +16,26 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Deploy Slash Commands to Discord",
+            "name": "Deploy DEV Slash Commands to Discord",
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}/discord/deployCommands.js"
+            "program": "${workspaceFolder}/discord/deployCommands.js",
+            "env": {
+                "NODE_ENV": "development"
+            }
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Deploy PROD Slash Commands to Discord",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/discord/deployCommands.js",
+            "env": {
+                "NODE_ENV": "production"
+            }
         }
     ]
 }

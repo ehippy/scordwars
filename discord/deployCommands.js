@@ -1,7 +1,16 @@
-require('dotenv').config()
+let dotEnvPath = `.env.${process.env.NODE_ENV}`;
+if (process.env.NODE_ENV === 'development') {
+	dotEnvPath = '.env';
+
+}
+require('dotenv').config({ path: dotEnvPath })
+
+console.log(`Starting deployCommands.js with ${dotEnvPath} environment`)
+
 const clientId = process.env.DISCORD_CLIENT_ID;
-const guildId = process.env.DISCORD_GUILD_ID;
 const token = process.env.DISCORD_BOT_TOKEN;
+
+const guildId = process.env.DISCORD_GUILD_ID;
 
 const { REST, Routes } = require('discord.js');
 const fs = require('node:fs');
@@ -27,7 +36,7 @@ const rest = new REST({ version: '10' }).setToken(token);
 		// The put method is used to fully refresh all commands in the guild with the current set
 		const data = await rest.put(
 			Routes.applicationCommands(clientId), //register globally
-			//Routes.applicationGuildCommands(clientId, guildId), // register just on Guild
+			//Routes.applicationGuildCommands(clientId, guildId), // register just on Guild, good for DEV testing
 			{ body: commands },
 		);
 
