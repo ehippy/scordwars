@@ -68,7 +68,7 @@ module.exports = {
 
             if (settingChanged) {
                 await guild.save()
-                return interaction.reply("Setting updated!")
+                return interaction.reply("Settings updated!")
             }
 
             const manPage = `**Infight.io Settings for ${guild.name}**
