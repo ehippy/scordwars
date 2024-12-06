@@ -22,11 +22,14 @@ module.exports = {
             let game = await guild.getCurrentGame()
             if (game != null) {
                 await game.cancelAndStartNewGame()
-                return interaction.reply("Game cancelled and new game started")
+                return interaction.reply("Admin used`/infight-rebootgame` to start a new game")
+            } else {
+                guild.currentGameId = null
+                await guild.save()
             }
-            db.models.Game.createNewGame(guild.id)
+            db.Game.createNewGame(guild.id)
 
-            return interaction.reply("New game started")
+            return interaction.reply("Admin used`/infight-rebootgame` to start a new game")
 
         } catch (error) {
             console.log("Error completing /infight-rebootgame", error)

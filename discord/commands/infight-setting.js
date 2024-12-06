@@ -44,8 +44,8 @@ module.exports = {
 
             const boardSize = interaction.options.getInteger('set-board-size')
             if (boardSize != null) {
-                if (boardSize < 0 || boardSize > 30) {
-                    return interaction.reply("BoardSize must be between 0 and 30")
+                if (boardSize < 5 || boardSize > 30) {
+                    return interaction.reply("BoardSize must be between 5 and 30")
                 }
                 settingChanged = true
                 guild.boardSize = boardSize
@@ -68,6 +68,15 @@ module.exports = {
 
             if (settingChanged) {
                 await guild.save()
+                let currentGame = guild.getCurrentGame()
+                if (currentGame == null && currentGame.status == 'new') {
+                    currentGame.boardWidth = guild.boardSize
+                    currentGame.boardHeight = guild.boardSize
+                    currentGame.minutesPerActionDistro = guild.actionTimerMinutes
+                    currentGame.minimumPlayerCount = guild.minimumPlayerCount
+                    await currentGame.save()
+                    currentGame.checkShouldStartGame()
+                }
                 return interaction.reply("Settings updated!")
             }
 

@@ -117,7 +117,7 @@ module.exports = function (sequelize) {
             const gamePlayers = await this.getGamePlayers()
             const userRequestedBoardSize = guild.boardSize
 
-            if (userRequestedBoardSize^2 < gamePlayers.length) { // if the board is too small, auto-size it
+            if (userRequestedBoardSize**2 < gamePlayers.length) { // if the board is too small, auto-size it
                 const autoBoardSize = this.sequelize.models.Game.calculateBoardSize(gamePlayers.length, 0.1)
                 this.boardHeight = autoBoardSize
                 this.boardWidth = autoBoardSize
@@ -190,11 +190,15 @@ module.exports = function (sequelize) {
                     playerIdToSkip = votedGamePlayer.id
                 }
 
-                const [results, metadata] = await this.sequelize.query('UPDATE "GamePlayers" SET actions = actions + 1, juryVotesAgainst = 0 WHERE "GameId" = ? AND status = ? AND id <> ?', {
+                await this.sequelize.query('UPDATE "GamePlayers" SET actions = actions + 1 WHERE "GameId" = ? AND status = ? AND id <> ?', {
                     replacements: [this.id, 'alive', playerIdToSkip]
                 })
 
-                await this.sequelize.query('UPDATE "GamePlayers" SET juryVotesToSpend = 1 WHERE "GameId" = ? AND status = ?', {
+                await this.sequelize.query('UPDATE "GamePlayers" SET "juryVotesAgainst" = 0 WHERE "GameId" = ?', {
+                    replacements: [this.id]
+                })
+
+                await this.sequelize.query('UPDATE "GamePlayers" SET "juryVotesToSpend" = 1 WHERE "GameId" = ? AND status = ?', {
                     replacements: [this.id, 'dead']
                 })
 
@@ -277,15 +281,17 @@ module.exports = function (sequelize) {
 
         async cancelAndStartNewGame() {
             this.notify("⚠️ Game " + this.id + " deleted by an admin. Sorry about that! New game coming up!")
+            const guildId = this.GuildId
             const delResult = await this.destroy();
-
-            const guild = await infightDB.Guild.findByPk(req.params.teamId)
-            if (guild.currentGameId == req.params.gameId) {
+            
+            const GameRef = this.sequelize.models.Game
+            const guild = await this.sequelize.models.Guild.findByPk(guildId)
+            if (guild != null) {
                 guild.currentGameId = null
                 const guildSave = await guild.save()
             }
 
-            await this.sequelize.models.Game.createNewGame(guild.id)
+            await GameRef.createNewGame(guild.id)
         }
 
         async doMove(player, action, targetX, targetY) {
@@ -309,7 +315,7 @@ module.exports = function (sequelize) {
                 throw new Error("You aren't in this game")
             }
 
-            if (gp.actions < 1 && action != 'giveHP') {
+            if (gp.actions < 1 && !['giveHP', 'juryVote'].includes(action)) {
                 throw new Error("You don't have enough AP")
             }
 
@@ -341,7 +347,7 @@ module.exports = function (sequelize) {
             const currentX = gp.positionX
             const currentY = gp.positionY
             if (['move', 'shoot', 'giveAP', 'giveHP', 'juryVote'].includes(action)) {
-                if (!Number.isInteger(targetX) || !Number.isInteger(targetY)) {
+                if (isNaN(Number(targetX)) || isNaN(Number(targetY))) {
                     throw new Error("Target is not numeric")
                 }
 
@@ -540,6 +546,7 @@ module.exports = function (sequelize) {
                     const stolenHP = targetGamePlayer.actions
                     gp.actions += stolenHP  // give the killer the AP of the killed
                     targetGamePlayer.actions = 0
+                    targetGamePlayer.juryVotesToSpend = 1
                     targetGamePlayer.deathTime = new Date()
                 }
 
