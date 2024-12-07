@@ -51,7 +51,7 @@ const InfightNotifier = {
   }
 }
 
-
+const { Op } = require('sequelize')
 const infightDB = require('./models/infightDB')
 infightDB.init()
 infightDB.sequelize.models.Game.notifier = InfightNotifier // add the notifier to the Game model so its available to Games
@@ -75,18 +75,34 @@ app.get('/myTeams', verifyToken, async (req, res) => {
     res.send('404')
   }
 
-  const guilds = await player.getGuilds()
-  res.send(guilds)
+  let playerGuilds = await infightDB.PlayerGuild.findAll({
+    where: {
+      PlayerId: {
+        [Op.eq]: req.user.id
+      },
+    },
+    include: [{
+      model: infightDB.Guild
+    }]
+  })
+
+  res.send(playerGuilds)
 })
 
-app.post('/games/:teamId/new', verifyToken, async (req, res) => {
-  if (process.env.NODE_ENV !== 'development') {
-    return res.status(403).send('This endpoint is only available in development mode');
-  }
-
+app.post('/guild/:teamId/optIn', verifyToken, async (req, res) => {
   try {
-    const newGame = await infightDB.Game.createNewGame(req.params.teamId, req.body.boardSize, req.body.boardSize, req.body.cycleMinutes)
-    res.send(newGame)
+    const pg = await infightDB.PlayerGuild.findOne({
+      where: {
+        GuildId: req.params.teamId,
+        PlayerId: req.user.id
+      }
+    })
+
+    if (pg != null) {
+      pg.changePlayerOptIn(req.body.optIn)
+      await pg.save()
+    }
+    res.send('nice')
   } catch (error) {
     res.status(404).send(error)
   }

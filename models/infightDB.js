@@ -9,6 +9,8 @@ const Guild = require('./Guild')(sequelize)
 const PlayerGuild = require('./PlayerGuild')(sequelize);
 Guild.belongsToMany(Player, { through: PlayerGuild });
 Player.belongsToMany(Guild, { through: PlayerGuild });
+PlayerGuild.belongsTo(Player, {foreignKey: 'PlayerId'})
+PlayerGuild.belongsTo(Guild, {foreignKey: 'GuildId'})
 
 // Games and GamePlayers and Moves are the stuff of gameplay: board and pieces and moves
 const Game = require('./Game')(sequelize)

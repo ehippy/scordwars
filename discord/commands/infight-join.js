@@ -6,7 +6,6 @@ module.exports = {
 		.setDescription('Join the Infight.io game on this Discord'),
 	async execute(interaction) {
 		try {
-
 			const db = require('../../models/infightDB')
 			console.log(`join fight from  ${interaction.member.id} `);
 
@@ -24,25 +23,10 @@ module.exports = {
 				}
 			})
 
-			if (pg == null) {
-				pg = db.PlayerGuild.build({
-					GuildId: interaction.guildId,
-					PlayerId: interaction.member.id
-				})
+			if (pg != null) {
+				pg.changePlayerOptIn(true)
 			}
 
-			pg.isOptedInToPlay = true
-			await pg.save()
-
-			// if there's a pending game, add them as a player
-			const guild = await db.Guild.findByPk(interaction.guildId)
-			const currentGame = await guild.getCurrentGame()
-			if (null != currentGame && currentGame.status == 'new') {
-				await currentGame.addPlayer(pg.PlayerId)
-				currentGame.notify("<@" + pg.PlayerId + "> joined!")
-				currentGame.checkShouldStartGame()
-			}
-			
 			return interaction.reply("You are on the roster for the next game!", { ephemeral: true })
 
 		} catch (error) {

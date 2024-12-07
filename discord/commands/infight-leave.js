@@ -28,22 +28,14 @@ module.exports = {
 				})
 			}
 
-			pg.isOptedInToPlay = false
-			await pg.save()
-
-			const guild = await db.Guild.findByPk(interaction.guildId)
-			// if there's a pending game, remove them from the roster
-			const currentGame = await guild.getCurrentGame()
-			if (currentGame != null) {
-				await currentGame.removePlayer(pg.PlayerId)
-				currentGame.notify("<@" + pg.PlayerId + "> left the roster!")
-				currentGame.checkShouldStartGame()
+			if (pg != null) {
+				pg.changePlayerOptIn(true)
 			}
 
-			return interaction.reply("You're off the roster for the next Infight.")
+			return interaction.reply("You're off the roster for the next Infight.", { ephemeral: true })
 		} catch (error) {
 			console.log("Error completing /infight-leave", error)
-			return interaction.reply("There was an error removing you from the roster")
+			return interaction.reply("There was an error removing you from the roster", { ephemeral: true })
 		}
 
 
