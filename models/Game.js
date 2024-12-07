@@ -48,7 +48,7 @@ module.exports = function (sequelize) {
             const gamePlayers = await this.getGamePlayers()
             if (gamePlayers.length >= this.minimumPlayerCount && this.startTime == null) {
                 const thisMoment = new Date()
-                this.startTime = new Date(+new Date(thisMoment) + (60 * 60 * 1000)) // start in an hour
+                this.startTime = new Date(+new Date(thisMoment) + (5 * 60 * 1000)) // start in an hour
                 await this.save()
                 this.notify("🎉 Game has enough players! [The new game](" + this.getUrl() + ") will start in an hour! ⏳ Start conspiring! 🕵️ More people can still `/infight-join` until game time!")
                 return

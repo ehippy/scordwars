@@ -35,8 +35,8 @@ module.exports = {
             let settingChanged = false
             const actionTimerMinutes = interaction.options.getInteger('set-action-timer-minutes')
             if (actionTimerMinutes != null) {
-                if (actionTimerMinutes < 30 || actionTimerMinutes > 2880) {
-                    return interaction.reply("ActionTimerMinutes must be between 30 and 2880")
+                if (actionTimerMinutes < 15 || actionTimerMinutes > 2880) {
+                    return interaction.reply("ActionTimerMinutes must be between 15 and 2880")
                 }
                 settingChanged = true
                 guild.actionTimerMinutes = actionTimerMinutes
