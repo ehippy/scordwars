@@ -37,17 +37,17 @@ module.exports = {
 			// if there's a pending game, add them as a player
 			const guild = await db.Guild.findByPk(interaction.guildId)
 			const currentGame = await guild.getCurrentGame()
-			if (null != currentGame) {
+			if (null != currentGame && currentGame.status == 'new') {
 				await currentGame.addPlayer(pg.PlayerId)
 				currentGame.notify("<@" + pg.PlayerId + "> joined!")
 				currentGame.checkShouldStartGame()
 			}
 			
-			return interaction.reply("You are on the roster for the next game!")
+			return interaction.reply("You are on the roster for the next game!", { ephemeral: true })
 
 		} catch (error) {
 			console.log("Error completing /infight-join", error)
-			return interaction.reply("There was an error adding you to the roster")
+			return interaction.reply("There was an error adding you to the roster", { ephemeral: true })
 		}
 
 	}
