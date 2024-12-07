@@ -58,10 +58,14 @@ module.exports = function (app, settings, db) {
     });
 
     const saveUser = async (discordProfile, refreshToken) => {
-    
+        
+        const nameToUse = discordProfile.global_name
+        if (nameToUse == null) {
+            nameToUse = discordProfile.username
+        }
         await db.Player.upsert({
             id: discordProfile.id,
-            name: discordProfile.global_name,
+            name: nameToUse,
             discriminator: discordProfile.discriminator,
             avatar: discordProfile.avatar            
         })
