@@ -18,12 +18,12 @@ module.exports = function (sequelize) {
 
             if (currentGame && currentGame.status == 'new') {
                 if (OptIn) {
-                    await currentGame.addPlayer(pg.PlayerId)
-                    currentGame.notify("<@" + pg.PlayerId + "> joined in time! 💪")
+                    await currentGame.addPlayer(this.PlayerId)
+                    currentGame.notify("<@" + this.PlayerId + "> joined in time! 💪")
                     currentGame.checkShouldStartGame()
                 } else {
-                    await currentGame.removePlayer(pg.PlayerId)
-                    currentGame.notify("<@" + pg.PlayerId + "> backed out! 😩")
+                    await currentGame.removePlayer(this.PlayerId)
+                    currentGame.notify("<@" + this.PlayerId + "> backed out! 😩")
                     currentGame.checkShouldStartGame()
                 }
             }
