@@ -108,6 +108,34 @@ app.post('/guild/:teamId/optIn', verifyToken, async (req, res) => {
   }
 })
 
+app.get('/guild/:teamId', async (req, res) => {
+  try {
+    const pg = await infightDB.Guild.findOne({
+      where: {
+        id: req.params.teamId
+      },
+      include: [{
+        model: infightDB.Game,
+        include: [{
+          model: infightDB.GamePlayer,
+          include: {
+            model: infightDB.Player // game winner
+          }
+        },]
+      }, {
+        model: infightDB.Player
+      }
+      ]
+    })
+    if (pg == null) {
+      throw new Error("Guild not found")
+    }
+    res.send(pg)
+  } catch (error) {
+    res.status(404).send(error)
+  }
+})
+
 app.get('/games/:teamId/:gameId', async (req, res) => {
 
   //check if we got a good id
