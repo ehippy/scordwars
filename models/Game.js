@@ -391,7 +391,7 @@ module.exports = function (sequelize) {
                 await targetGamePlayer.save()
                 await move.save()
 
-                this.notify("<@" + gp.PlayerId + "> 🗳️ **voted** to haunt someone! 👻")
+                this.notify("<@" + gp.PlayerId + "> 🗳️ **voted** to treat someone! 🍬")
 
                 return "Voted!"
             }
