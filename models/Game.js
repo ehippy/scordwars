@@ -184,14 +184,19 @@ module.exports = function (sequelize) {
                     ]
                 })
 
-                let playerIdToSkip = -1
                 if (votedGamePlayer) {
-                    this.notify("👻 **The dead have spoken!** <@" + votedGamePlayer.PlayerId + "> has been **haunted** by the jury! 👻")
-                    playerIdToSkip = votedGamePlayer.id
+                    const tastyTreats = ["🍩", "🍪", "🍫", "🍿", "🍨", "🍦", "🍭", "🍬", "🥧", "🧁", "🎂", "🍰"];
+                    const randomTreat = tastyTreats[Math.floor(Math.random() * tastyTreats.length)];
+
+                    this.notify(randomTreat + " **The dead have spoken!** <@" + votedGamePlayer.PlayerId + "> got an EXTRA AP treat! " + randomTreat)
+
+                    await this.sequelize.query('UPDATE "GamePlayers" SET actions = actions + 1 WHERE id = ?', {
+                        replacements: [votedGamePlayer.id,]
+                    })
                 }
 
-                await this.sequelize.query('UPDATE "GamePlayers" SET actions = actions + 1 WHERE "GameId" = ? AND status = ? AND id <> ?', {
-                    replacements: [this.id, 'alive', playerIdToSkip]
+                await this.sequelize.query('UPDATE "GamePlayers" SET actions = actions + 1 WHERE "GameId" = ? AND status = ?', {
+                    replacements: [this.id, 'alive']
                 })
 
                 await this.sequelize.query('UPDATE "GamePlayers" SET "juryVotesAgainst" = 0 WHERE "GameId" = ?', {
