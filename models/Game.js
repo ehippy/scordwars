@@ -117,7 +117,7 @@ module.exports = function (sequelize) {
             const gamePlayers = await this.getGamePlayers()
             const userRequestedBoardSize = guild.boardSize
 
-            if (userRequestedBoardSize**2 < gamePlayers.length) { // if the board is too small, auto-size it
+            if (userRequestedBoardSize ** 2 < gamePlayers.length) { // if the board is too small, auto-size it
                 const autoBoardSize = this.sequelize.models.Game.calculateBoardSize(gamePlayers.length, 0.1)
                 this.boardHeight = autoBoardSize
                 this.boardWidth = autoBoardSize
@@ -154,7 +154,6 @@ module.exports = function (sequelize) {
             this.sequelize.models.Game.notifier.notify(this, msg)
         }
         async doTick() {
-            //console.log("Starting game tick for " + this.id)
 
             if (this.status != 'active') {
                 throw new Error("Game is not active")
@@ -195,9 +194,7 @@ module.exports = function (sequelize) {
                     })
                 }
 
-                await this.sequelize.query('UPDATE "GamePlayers" SET actions = actions + 1 WHERE "GameId" = ? AND status = ?', {
-                    replacements: [this.id, 'alive']
-                })
+                await this.giveAllLivingPlayersAP(1)
 
                 await this.sequelize.query('UPDATE "GamePlayers" SET "juryVotesAgainst" = 0 WHERE "GameId" = ?', {
                     replacements: [this.id]
@@ -208,18 +205,101 @@ module.exports = function (sequelize) {
                 })
 
                 let heartMsg = ''
-                const heartChance = 0.33
+                const heartChance = 0.25
                 if (Math.random() > heartChance) {
                     await this.addHeart()
                     heartMsg = " A heart appeared! 💗 Is it nearby?"
                 }
 
-                this.notify("⚡ Infight distributed AP! [Make a move](" + this.getUrl() + ") and watch your back!" + heartMsg)
+                if (this.suddenDeathRound == 0) {
+                    this.notify("⚡ Infight distributed AP! [Make a move](" + this.getUrl() + ") and watch your back!" + heartMsg)
+                }
+
+                if (this.suddenDeathRound > 0) {
+                    const edgeDistance = this.suddenDeathRound; // Define the distance from the edge you want to check
+
+                    await this.giveAllLivingPlayersAP(2)
+                    this.notify("🌪️ **The storm** is closing in! You draw an extra AP from its power! 🌪️")
+
+                    let playersHitByStorm = []
+                    let playersKilledByStorm = []
+                    const players = await this.getGamePlayers();
+                    const livingPlayers = this.constructor.getLivingPlayers(players)
+                    const countAliveBeforeBlasts = livingPlayers.length;
+                    for (let i = 0; i < livingPlayers.length; i++) {
+                        const player = livingPlayers[i];
+                        const { positionX, positionY } = player;
+
+                        if (
+                            positionX + 1 <= edgeDistance || // Left edge
+                            positionX >= this.boardWidth - (edgeDistance + 1) || // Right edge
+                            positionY + 1 <= edgeDistance || // Top edge
+                            positionY >= this.boardHeight - (edgeDistance + 1) // Bottom edge
+                        ) {
+                            console.log(`Player ${player.PlayerId} is within ${edgeDistance} units from the edge.`);
+                            playersHitByStorm.push(player);
+                            player.health -= 1;
+                            if (player.health === 0) {
+                                player.status = 'dead';
+                                player.deathTime = new Date();
+                                playersKilledByStorm.push(player);
+                                this.notify(`🌪️ **The storm** shocked and killed <@${player.PlayerId}>! They're out!`);
+                            } else {
+                                this.notify(`🌪️ **The storm** shocked <@${player.PlayerId}> for 1 HP! Run to the center!`);
+                            }
+                            await player.save();
+                        }
+                    }
+
+                    //all remaining players were killed by storm
+                    if (playersKilledByStorm.length == countAliveBeforeBlasts) {
+                        // mark all winPositions as 2
+                        for (let i = 0; i < playersKilledByStorm.length; i++) {
+                            const player = playersKilledByStorm[i];
+                            player.winPosition = 2;
+                            await player.save();
+                        }
+
+                        await this.endGameAndBeginAnew('tied', playersKilledByStorm, guild);
+                        return;
+                    }
+
+                    // if some were killed, but not all, save the dead's winPositions
+                    if (playersKilledByStorm.length > 0 && playersKilledByStorm.length < countAliveBeforeBlasts) {
+                        const countRemaining = countAliveBeforeBlasts - playersKilledByStorm.length;
+                        for (let i = 0; i < playersKilledByStorm.length; i++) {
+                            const player = playersKilledByStorm[i];
+                            player.winPosition = countRemaining + 1;
+                            await player.save();
+                        }
+                    }
+
+                    // if only one player remains, they win
+                    if (playersKilledByStorm.length > 0 && countAliveBeforeBlasts - playersKilledByStorm.length == 1) {
+                        let lastBro = this.constructor.getLivingPlayers(livingPlayers)[0];
+                        lastBro.winPosition = 1;
+                        await lastBro.save();
+                        await this.endGameAndBeginAnew('won', [lastBro], guild);
+                        return;
+                    }
+
+                    //don't grow wider than half the width
+                    if (this.suddenDeathRound < Math.ceil(this.boardHeight / 2)) {
+                        this.suddenDeathRound += 1;
+                    }
+                    await this.save();
+                }
 
             } catch (error) {
                 console.log("game.doTick error", error)
             }
 
+        }
+
+        async giveAllLivingPlayersAP(ap) {
+            await this.sequelize.query('UPDATE "GamePlayers" SET actions = actions + ? WHERE "GameId" = ? AND status = ?', {
+                replacements: [ap, this.id, 'alive']
+            })
         }
 
         static async createNewGame(guildId) {
@@ -288,7 +368,7 @@ module.exports = function (sequelize) {
             this.notify("⚠️ Game " + this.id + " deleted by an admin. Sorry about that! New game coming up!")
             const guildId = this.GuildId
             const delResult = await this.destroy();
-            
+
             const GameRef = this.sequelize.models.Game
             const guild = await this.sequelize.models.Guild.findByPk(guildId)
             if (guild != null) {
@@ -382,6 +462,10 @@ module.exports = function (sequelize) {
 
                 if (gp.juryVotesToSpend == 0) {
                     throw new Error("You've already voted")
+                }
+
+                if (targetGamePlayer.status != 'alive') {
+                    throw new Error("That fool's dead")
                 }
 
                 gp.juryVotesToSpend = 0
@@ -556,13 +640,7 @@ module.exports = function (sequelize) {
                 }
 
                 //check if game is over
-                let countAlive = 0
-                for (let i = 0; i < this.GamePlayers.length; i++) {
-                    const somePlayer = this.GamePlayers[i];
-                    if (somePlayer.status == 'alive') {
-                        countAlive++
-                    }
-                }
+                let countAlive = this.constructor.getLivingPlayers(this.GamePlayers).length
                 targetGamePlayer.winPosition = countAlive + 1
                 await targetGamePlayer.save()
 
@@ -578,22 +656,17 @@ module.exports = function (sequelize) {
                 }
                 this.notify(shotMsg)
 
+                //start sudden death
+                if (countAlive == 2 && this.suddenDeathRound == 0) {
+                    this.suddenDeathRound = 1
+                    await this.save()
+                    this.notify("🚨 **Sudden Death!** Only two players remain! The storm approaches! 🌪️")
+                }
+
                 if (countAlive == 1) {
                     gp.winPosition = 1
                     await gp.save()
-
-                    this.status = 'won'
-                    this.winningPlayerId = gp.id
-                    await this.save()
-
-                    guild.currentGameId = null
-                    await guild.save()
-
-                    this.notify("# 🎉 👑 <@" + gp.PlayerId + "> **_WON THE INFIGHT!!_** 🏁 🎉")
-
-                    this.sendAfterActionReport()
-
-                    this.sequelize.models.Game.createNewGame(this.GuildId)
+                    await this.endGameAndBeginAnew('won', [gp], guild)
                 }
 
 
@@ -604,6 +677,38 @@ module.exports = function (sequelize) {
         }
 
 
+
+        async endGameAndBeginAnew(winType, winningPlayerArray, guild) {
+            this.status = winType
+
+            if (winningPlayerArray.length == 1) {
+                this.winningPlayerId = winningPlayerArray[0].id
+                this.notify("# 🎉 👑 <@" + winningPlayerArray[0].PlayerId + "> **_WON THE INFIGHT!!_** 🏁 🎉")
+            }
+
+            if (winningPlayerArray.length > 1) {
+                this.notify("# 🥈 👔 <@" + winningPlayerArray.map(gp => gp.PlayerId).join('> and <@') + "> **_TIED FOR 2nd!!_** 🏁 🤝")
+            }
+
+            await this.save()
+            guild.currentGameId = null
+            await guild.save()
+
+            await this.sendAfterActionReport()
+
+            await this.sequelize.models.Game.createNewGame(this.GuildId)
+        }
+
+        static getLivingPlayers(gamePlayers) {
+            let livingPlayers = []
+            for (let i = 0; i < gamePlayers.length; i++) {
+                const somePlayer = gamePlayers[i]
+                if (somePlayer.status == 'alive') {
+                    livingPlayers.push(somePlayer)
+                }
+            }
+            return livingPlayers
+        }
 
         async addHeart() {
             const gamePlayers = await this.getGamePlayers()
@@ -743,7 +848,7 @@ module.exports = function (sequelize) {
                 defaultValue: 20
             },
             winningPlayerId: {
-                type: DataTypes.INTEGER,
+                type: DataTypes.STRING,
                 allowNull: true
             },
             minimumPlayerCount: {
@@ -755,6 +860,11 @@ module.exports = function (sequelize) {
                 type: DataTypes.JSON,
                 allowNull: true,
                 defaultValue: []
+            },
+            suddenDeathRound: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+                defaultValue: 0
             }
         },
         { sequelize }
