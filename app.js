@@ -64,7 +64,6 @@ const ifDisco = require('./discord/ifDiscord')(infightDB)
 InfightNotifier.disco = ifDisco // attach discord to the notifier
 
 app.get('/', (req, res) => {
-  //console.log(ifDisco.guilds.cache)
   res.send('Hello from the infight api!')
 })
 
@@ -125,7 +124,11 @@ app.get('/guild/:teamId', async (req, res) => {
       }, {
         model: infightDB.Player
       }
-      ]
+      ],
+      order: [
+        [infightDB.Game, 'startTime', 'DESC'],
+        [infightDB.Game, infightDB.GamePlayer, 'winPosition', 'ASC']
+      ],
     })
     if (pg == null) {
       throw new Error("Guild not found")
