@@ -41,17 +41,17 @@ module.exports = function (sequelize) {
             minimumPlayerCount: {
                 type: DataTypes.INTEGER,
                 allowNull: true,
-                defaultValue: 6
+                defaultValue: 5
             },
             boardSize: {
                 type: DataTypes.INTEGER,
                 allowNull: false,
-                defaultValue: 10
+                defaultValue: 8
             },
             actionTimerMinutes: {
                 type: DataTypes.INTEGER,
                 allowNull: false,
-                defaultValue: 1440
+                defaultValue: 60
             }
         },
         { sequelize }
