@@ -1,4 +1,6 @@
 const { Sequelize, DataTypes, Model, Op } = require('sequelize')
+const { Stats } =  require('./StatTracker')
+const GamePlayer = require('./GamePlayer')
 
 module.exports = function (sequelize) {
 
@@ -192,6 +194,7 @@ module.exports = function (sequelize) {
                     await this.sequelize.query('UPDATE "GamePlayers" SET actions = actions + 1 WHERE id = ?', {
                         replacements: [votedGamePlayer.id,]
                     })
+                    Stats.increment(votedGamePlayer, Stats.GamePlayerStats.treated)
                 }
 
                 await this.giveAllLivingPlayersAP(1)
@@ -239,6 +242,8 @@ module.exports = function (sequelize) {
                             console.log(`Player ${player.PlayerId} is within ${edgeDistance} units from the edge.`);
                             playersHitByStorm.push(player);
                             player.health -= 1;
+                            Stats.increment(player, Stats.GamePlayerStats.zapped)
+
                             if (player.health === 0) {
                                 player.status = 'dead';
                                 player.deathTime = new Date();
@@ -470,6 +475,8 @@ module.exports = function (sequelize) {
 
                 gp.juryVotesToSpend = 0
                 targetGamePlayer.juryVotesAgainst += 1
+                Stats.increment(gp, Stats.GamePlayerStats.castVote)
+                Stats.increment(targetGamePlayer, Stats.GamePlayerStats.receivedVote)
 
                 await gp.save()
                 await targetGamePlayer.save()
@@ -486,6 +493,7 @@ module.exports = function (sequelize) {
                 }
                 gp.range += 1
                 gp.actions -= 3
+                Stats.increment(gp, Stats.GamePlayerStats.upgradedRange)
 
                 await gp.save()
                 await move.save()
@@ -501,6 +509,7 @@ module.exports = function (sequelize) {
                 }
                 gp.health += 1
                 gp.actions -= 3
+                Stats.increment(gp, Stats.GamePlayerStats.healed)
 
                 await gp.save()
                 await move.save()
@@ -535,15 +544,16 @@ module.exports = function (sequelize) {
                 gp.positionY = targetY
                 gp.actions -= 1
 
-                await gp.save()
-                await move.save()
-
                 const movementVerb = this.sequelize.models.Move.getRandomMovementDescriptionWithEmoji()
                 let heartPickupText = ''
                 if (collectedHeart) {
                     heartPickupText = ' and collected a heart 💖'
+                    Stats.increment(gp, Stats.GamePlayerStats.pickedUpHp)
                 }
+                Stats.increment(gp, Stats.GamePlayerStats.walked)
 
+                await gp.save()
+                await move.save()
                 this.notify(`<@${gp.PlayerId}> ${movementVerb} ${directionDescription}${heartPickupText}!`)
 
                 return "Moved!"
@@ -556,6 +566,8 @@ module.exports = function (sequelize) {
 
                 targetGamePlayer.actions += 1
                 gp.actions -= 1
+                Stats.increment(gp, Stats.GamePlayerStats.gaveAp)
+                Stats.increment(targetGamePlayer, Stats.GamePlayerStats.wasGiftedAp)
 
                 await gp.save()
                 await targetGamePlayer.save()
@@ -577,10 +589,15 @@ module.exports = function (sequelize) {
                 }
 
                 targetGamePlayer.health += 1
+                Stats.increment(targetGamePlayer, Stats.GamePlayerStats.gotHp)
                 if (targetGamePlayer.health == 1) { // do a resurrection!
                     targetGamePlayer.status = 'alive'
                     targetGamePlayer.winPosition = null
                     targetGamePlayer.deathTime = null
+
+                    Stats.increment(gp, Stats.GamePlayerStats.resurrector)
+                    Stats.increment(targetGamePlayer, Stats.GamePlayerStats.resurrectee)
+
                     await targetGamePlayer.save()
 
                     //reshuffle the winPositions in the GamePlayers
@@ -603,6 +620,7 @@ module.exports = function (sequelize) {
 
                 }
                 gp.health -= 1
+                Stats.increment(gp, Stats.GamePlayerStats.gaveHp)
 
                 await gp.save()
                 await targetGamePlayer.save()
@@ -629,8 +647,15 @@ module.exports = function (sequelize) {
                     throw new Error("They're dead, Jim!")
                 }
 
+                Stats.increment(gp, Stats.GamePlayerStats.shotSomeone)
+                Stats.increment(targetGamePlayer, Stats.GamePlayerStats.wasShot)
+
                 targetGamePlayer.health -= 1
                 if (targetGamePlayer.health < 1) {
+
+                    Stats.increment(gp, Stats.GamePlayerStats.killedSomeone)
+                    Stats.increment(targetGamePlayer, Stats.GamePlayerStats.wasKilled)
+
                     targetGamePlayer.status = 'dead'
                     const stolenHP = targetGamePlayer.actions
                     gp.actions += stolenHP  // give the killer the AP of the killed
