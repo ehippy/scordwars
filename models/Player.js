@@ -24,6 +24,11 @@ module.exports = function (sequelize) {
             },
             avatar: {
                 type: DataTypes.STRING
+            },
+            stats: {
+                type: DataTypes.JSON,
+                allowNull: false,
+                defaultValue: {}
             }
         },
         { sequelize }

@@ -52,6 +52,11 @@ module.exports = function (sequelize) {
                 type: DataTypes.INTEGER,
                 allowNull: false,
                 defaultValue: 60
+            },
+            stats: {
+                type: DataTypes.JSON,
+                allowNull: false,
+                defaultValue: {}
             }
         },
         { sequelize }
