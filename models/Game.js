@@ -825,7 +825,9 @@ module.exports = function (sequelize) {
                         break
                 }
                 leaderBoard += ` <@${ep.PlayerId}>`
-                leaderBoard += ` 🩸Kills: ${ep.stats.killedSomeone}`
+                if (typeof ep.stats.killedSomeone !== 'undefined') {
+                    leaderBoard += ` 🩸Kills: ${ep.stats.killedSomeone}`
+                }
             })
             this.notify(leaderBoard)
         }
