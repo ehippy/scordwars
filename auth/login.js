@@ -80,11 +80,15 @@ module.exports = function (app, settings, db) {
                 icon: guild.icon
             })
 
-            associations.push({
+            const pg = {
                 PlayerId: discordProfile.id,
                 GuildId: guild.id,
-                isAdmin: false //TODO: read this from the discordProfile.permissions or whatever
-            })
+                isAdmin: false
+            }
+            if (guild.isOwner) {
+                pg.isAdmin = true
+            }
+            associations.push(pg)
         });
         await db.Guild.bulkCreate(foundGuilds, {
             updateOnDuplicate: ['name', 'icon']
@@ -92,7 +96,7 @@ module.exports = function (app, settings, db) {
 
 
         await db.PlayerGuild.bulkCreate(associations, {
-            updateOnDuplicate: ['isAdmin']
+            updateOnDuplicate: []
         }).catch(function (err) {
             console.log(err)
           })
