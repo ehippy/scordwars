@@ -6,9 +6,8 @@ module.exports = {
 		.setDescription('Sets or unsets a discord user as an Infight admin')
         .addUserOption(option => option.setName('user').setDescription('The user to designate as an admin'))
         .addBooleanOption(option => option.setName('set-as-admin').setDescription('True/False shoud user be an admin')),
-	async execute(interaction) {
+	async execute(interaction, db) {
 		try {
-			const db = require('../../models/infightDB')
 			console.log(`set admin from  ${interaction.member.id} `);
 
 			// confirm the player exists

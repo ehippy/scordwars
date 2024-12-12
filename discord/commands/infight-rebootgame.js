@@ -7,10 +7,8 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     ,
 
-    async execute(interaction) {
+    async execute(interaction, db) {
         try {
-
-            const db = require('../../models/infightDB')
             console.log(`discord setting request from  ${interaction.member.id} `, interaction);
 
             // confirm the player's been attached to a guild

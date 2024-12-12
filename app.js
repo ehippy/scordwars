@@ -36,7 +36,7 @@ const InfightNotifier = {
   },
   async notify(game, msg) { //sends a string out to all channels for a game
     //tell discord
-    const guild = await infightDB.sequelize.models.Guild.findByPk(game.GuildId) //TODO too many queries, cache gameChannelId somewhere
+    const guild = await infightDB.sequelize.models.Guild.findByPk(game.GuildId)
     const guildChannel = this.disco.channels.cache.get(guild.gameChannelId)
     guildChannel.send(msg)
 
@@ -48,6 +48,11 @@ const InfightNotifier = {
   async notifyGameId(gameId, msg) {
     const game = await infightDB.models.Game.getByPk(gameId)
     this.notify(game, msg)
+  },
+  async notifyGuildId(guildId, msg) {
+    const guild = await infightDB.sequelize.models.Guild.findByPk(guildId)
+    const guildChannel = this.disco.channels.cache.get(guild.gameChannelId)
+    guildChannel.send(msg)
   }
 }
 
@@ -55,6 +60,7 @@ const { Op } = require('sequelize')
 const infightDB = require('./models/infightDB')
 infightDB.init()
 infightDB.sequelize.models.Game.notifier = InfightNotifier // add the notifier to the Game model so its available to Games
+infightDB.sequelize.models.Guild.notifier = InfightNotifier // add the notifier to the Guild model so its available to Guilds
 
 const infightLogin = require("./auth/login")(app, authSettings, infightDB)
 const verifyToken = require("./auth/tokenAuthMiddleware")

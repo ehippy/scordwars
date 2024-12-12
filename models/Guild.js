@@ -4,6 +4,12 @@ module.exports = function (sequelize) {
 
     // add instance and class methods in here
     class Guild extends Model {
+        notifier = null
+
+        async notify(msg) {
+            await this.sequelize.models.Guild.notifier.notifyGuildId(this.id, msg)
+        }
+
         async getCurrentGame() {
             if (this.currentGameId == null) return null
             return await this.sequelize.models.Game.findByPk(this.currentGameId)

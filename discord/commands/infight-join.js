@@ -4,9 +4,8 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('infight-join')
 		.setDescription('Join the Infight.io game on this Discord'),
-	async execute(interaction) {
+	async execute(interaction, db) {
 		try {
-			const db = require('../../models/infightDB')
 			console.log(`join fight from  ${interaction.member.id} `);
 
 			// confirm the player exists

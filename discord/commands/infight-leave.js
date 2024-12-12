@@ -4,9 +4,8 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('infight-leave')
 		.setDescription('Leave the Infight.io game on this Discord'),
-	async execute(interaction, gameEventChannels) {
+	async execute(interaction, db) {
 		try {
-			const db = require('../../models/infightDB')
 			console.log(`leave fight from  ${interaction.member.id} `);
 
 			const player = await db.Player.findByPk(interaction.member.id)
@@ -29,7 +28,7 @@ module.exports = {
 			}
 
 			if (pg != null) {
-				pg.changePlayerOptIn(true)
+				pg.changePlayerOptIn(false)
 			}
 
 			return interaction.reply("You're off the roster for the next Infight.", { ephemeral: true })

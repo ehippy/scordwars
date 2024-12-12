@@ -14,10 +14,9 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     ,
 
-    async execute(interaction) {
+    async execute(interaction, db) {
         try {
 
-            const db = require('../../models/infightDB')
             console.log(`discord setting request from  ${interaction.member.id} `, interaction);
 
             // confirm the player exists
@@ -64,6 +63,16 @@ module.exports = {
             if (newChannel != null) {
                 settingChanged = true
                 guild.gameChannelId = newChannel.id
+                guild.isConnected = true
+                await guild.save()
+                guild.notify("👋 Hiya! Infight.io posts here now!")
+
+                try {
+                    await db.Game.createNewGame(guild.id)
+                } catch (error) {
+                    //console.log("Error starting new game after channel change", error)
+                }
+                
             }
 
             if (settingChanged) {

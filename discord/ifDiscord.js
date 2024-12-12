@@ -35,10 +35,14 @@ module.exports = function (db) {
         }
     
         try {
-            await command.execute(interaction);
+            await command.execute(interaction, db);
         } catch (error) {
             console.error(error);
-            await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+            try {
+                await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+            } catch (error2) {
+                console.log("Error returning discord error response", error2)
+            }
         }
     });
 
@@ -56,21 +60,6 @@ module.exports = function (db) {
             name: guild.name,
             icon: guild.icon
         });
-
-        // then make an infight channel in the discord
-        const channel = await guild.channels.create({
-            name: "infight",
-            type: ChannelType.GuildText
-        }) //TODO error handling, bro WOT EEF NO CHANAL? also, why not text channels? Channel cats?
-
-        g.gameChannelId = channel.id
-        g.isConnected = true
-        await g.save()
-
-        channel.send("👋 Hiya gang! I'm infight.io, I'm a game you can play while you idle in Discord!")
-
-        //create an initial game?
-        db.Game.createNewGame(g.id, 10, 10, 60*24)
     })
 
     //removed from a server
