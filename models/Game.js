@@ -370,9 +370,10 @@ module.exports = function (sequelize) {
         }
 
         async cancelAndStartNewGame() {
-            this.notify("⚠️ Game " + this.id + " deleted by an admin. Sorry about that! New game coming up!")
+            this.notify("⚠️ Game " + this.id + " cancelled by an admin. Sorry about that! New game coming up!")
             const guildId = this.GuildId
-            const delResult = await this.destroy();
+            this.status = 'cancelled'
+            await this.save();
 
             const GameRef = this.sequelize.models.Game
             const guild = await this.sequelize.models.Guild.findByPk(guildId)
