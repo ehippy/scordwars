@@ -68,15 +68,8 @@ module.exports = {
 
             if (settingChanged) {
                 await guild.save()
-                let currentGame = await guild.getCurrentGame()
-                if (currentGame != null && currentGame.status == 'new') {
-                    currentGame.boardWidth = guild.boardSize
-                    currentGame.boardHeight = guild.boardSize
-                    currentGame.minutesPerActionDistro = guild.actionTimerMinutes
-                    currentGame.minimumPlayerCount = guild.minimumPlayerCount
-                    await currentGame.save()
-                    currentGame.checkShouldStartGame()
-                }
+                await guild.shouldStartCurrentGame()
+                
                 return interaction.reply("Settings updated!")
             }
 
