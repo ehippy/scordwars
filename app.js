@@ -139,6 +139,43 @@ app.get('/guild/:teamId', async (req, res) => {
   }
 })
 
+app.post('/guild/:teamId/settings', verifyToken, async (req, res) => {
+  try {
+    //confirm current player is an admin
+    const adminPlayerGuild = await infightDB.PlayerGuild.findOne({
+      where: {
+        GuildId: req.params.teamId,
+        PlayerId: req.user.id,
+        isAdmin: true
+      }
+    })
+    if (adminPlayerGuild === null) {
+      throw new Error("You are not an admin of this guild")
+    }
+
+
+    const pg = await infightDB.Guild.findOne({
+      where: {
+        id: req.params.teamId
+      }
+    })
+    if (pg == null) {
+      throw new Error("Guild not found")
+    }
+
+    pg.boardSize = req.body.boardSize
+    pg.actionTimerMinutes = req.body.actionTimerMinutes
+    pg.minimumPlayerCount = req.body.minimumPlayerCount
+
+    await pg.save()
+    await pg.shouldStartCurrentGame()
+
+    return res.send(pg)
+  } catch (error) {
+    res.status(404).send(error.message)
+  }
+})
+
 app.get('/games/:teamId/:gameId', async (req, res) => {
 
   //check if we got a good id

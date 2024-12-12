@@ -8,6 +8,18 @@ module.exports = function (sequelize) {
             if (this.currentGameId == null) return null
             return await this.sequelize.models.Game.findByPk(this.currentGameId)
         }
+
+        async shouldStartCurrentGame() {
+            let currentGame = await this.getCurrentGame()
+            if (currentGame != null && currentGame.status == 'new') {
+                currentGame.boardWidth = this.boardSize
+                currentGame.boardHeight = this.boardSize
+                currentGame.minutesPerActionDistro = this.actionTimerMinutes
+                currentGame.minimumPlayerCount = this.minimumPlayerCount
+                await currentGame.save()
+                currentGame.checkShouldStartGame()
+            }
+        }
     }
 
     // set up the Sequelize fields
