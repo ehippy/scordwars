@@ -46,7 +46,8 @@ module.exports = {
             receivedVote: 'receivedVote',
             resurrectee: 'resurrectee',
             resurrector: 'resurrector',
-            zapped: 'zapped'
+            zapped: 'zapped',
+            startFire: 'startFire'
         }
     }
 }

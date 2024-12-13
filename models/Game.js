@@ -1,5 +1,5 @@
 const { Sequelize, DataTypes, Model, Op } = require('sequelize')
-const { Stats } =  require('./StatTracker')
+const { Stats } = require('./StatTracker')
 const GamePlayer = require('./GamePlayer')
 
 module.exports = function (sequelize) {
@@ -86,10 +86,10 @@ module.exports = function (sequelize) {
                     }
                 }
 
-                //did we crash into a heart
-                for (let i = 0; i < this.boardHeartLocations.length; i++) {
-                    const hl = this.boardHeartLocations[i];
-                    if (hl[0] == newPos[0] && hl[1] == newPos[1]) {
+                //did we crash into an object?
+                for (let i = 0; i < this.boardObjectLocations.length; i++) {
+                    const boardObject = this.boardObjectLocations[i];
+                    if (boardObject.x == newPos[0] && boardObject.y == newPos[1]) {
                         foundClearSpace = false
                     }
                 }
@@ -214,6 +214,34 @@ module.exports = function (sequelize) {
                     heartMsg = " A heart appeared! 💗 Is it nearby?"
                 }
 
+                //burn people standing in fire
+
+                let playersKilledByEnvironment = []
+                const players = await this.getGamePlayers();
+                const livingPlayers = this.constructor.getLivingPlayers(players)
+                const countAliveBeforeEnvironmentalDeaths = livingPlayers.length;
+                let numBurnedByFire = 0
+                for (let i = 0; i < this.boardObjectLocations.length; i++) {
+                    let obj = this.boardObjectLocations[i];
+                    if (obj.type == 'fire') {
+                        for (let j = 0; j < livingPlayers.length; j++) {
+                            let player = livingPlayers[j];
+                            if (player.positionX == obj.x && player.positionY == obj.y) {
+                                player.health -= 1
+                                numBurnedByFire++
+                                if (player.health == 0) {
+                                    player.status = 'dead'
+                                    player.deathTime = new Date()
+                                    playersKilledByEnvironment.push(player)
+                                    this.notify("🔥 <@" + player.PlayerId + "> was cooked! 🔥")
+                                }
+                                await player.save()
+                            }
+                        }
+                    }
+                }
+
+
                 if (this.suddenDeathRound == 0) {
                     this.notify("⚡ Infight distributed AP! [Make a move](" + this.getUrl() + ") and watch your back!" + heartMsg)
                 }
@@ -224,11 +252,8 @@ module.exports = function (sequelize) {
                     await this.giveAllLivingPlayersAP(2)
                     this.notify("🌪️ **The storm** is closing in! You draw an extra AP from its power! 🌪️")
 
-                    let playersHitByStorm = []
-                    let playersKilledByStorm = []
-                    const players = await this.getGamePlayers();
+                    const players = await this.getGamePlayers(); //get this again, so as not to process players killed by fire again
                     const livingPlayers = this.constructor.getLivingPlayers(players)
-                    const countAliveBeforeBlasts = livingPlayers.length;
                     for (let i = 0; i < livingPlayers.length; i++) {
                         const player = livingPlayers[i];
                         const { positionX, positionY } = player;
@@ -240,14 +265,13 @@ module.exports = function (sequelize) {
                             positionY >= this.boardHeight - (edgeDistance + 1) // Bottom edge
                         ) {
                             console.log(`Player ${player.PlayerId} is within ${edgeDistance} units from the edge.`);
-                            playersHitByStorm.push(player);
                             player.health -= 1;
                             Stats.increment(player, Stats.GamePlayerStats.zapped)
 
                             if (player.health === 0) {
                                 player.status = 'dead';
                                 player.deathTime = new Date();
-                                playersKilledByStorm.push(player);
+                                playersKilledByEnvironment.push(player);
                                 this.notify(`🌪️ **The storm** shocked and killed <@${player.PlayerId}>! They're out!`);
                             } else {
                                 this.notify(`🌪️ **The storm** shocked <@${player.PlayerId}> for 1 HP! Run to the center!`);
@@ -256,44 +280,45 @@ module.exports = function (sequelize) {
                         }
                     }
 
-                    //all remaining players were killed by storm
-                    if (playersKilledByStorm.length == countAliveBeforeBlasts) {
-                        // mark all winPositions as 2
-                        for (let i = 0; i < playersKilledByStorm.length; i++) {
-                            const player = playersKilledByStorm[i];
-                            player.winPosition = 2;
-                            await player.save();
-                        }
-
-                        await this.endGameAndBeginAnew('tied', playersKilledByStorm, guild);
-                        return;
-                    }
-
-                    // if some were killed, but not all, save the dead's winPositions
-                    if (playersKilledByStorm.length > 0 && playersKilledByStorm.length < countAliveBeforeBlasts) {
-                        const countRemaining = countAliveBeforeBlasts - playersKilledByStorm.length;
-                        for (let i = 0; i < playersKilledByStorm.length; i++) {
-                            const player = playersKilledByStorm[i];
-                            player.winPosition = countRemaining + 1;
-                            await player.save();
-                        }
-                    }
-
-                    // if only one player remains, they win
-                    if (playersKilledByStorm.length > 0 && countAliveBeforeBlasts - playersKilledByStorm.length == 1) {
-                        let lastBro = this.constructor.getLivingPlayers(livingPlayers)[0];
-                        lastBro.winPosition = 1;
-                        await lastBro.save();
-                        await this.endGameAndBeginAnew('won', [lastBro], guild);
-                        return;
-                    }
-
                     //don't grow wider than half the width
                     if (this.suddenDeathRound < Math.ceil(this.boardHeight / 2)) {
                         this.suddenDeathRound += 1;
                     }
-                    await this.save();
                 }
+
+                //all remaining players were killed by environment
+                if (playersKilledByEnvironment.length == countAliveBeforeEnvironmentalDeaths) {
+                    // mark all winPositions as 2
+                    for (let i = 0; i < playersKilledByEnvironment.length; i++) {
+                        const player = playersKilledByEnvironment[i];
+                        player.winPosition = 2;
+                        await player.save();
+                    }
+
+                    await this.endGameAndBeginAnew('tied', playersKilledByEnvironment, guild);
+                    return;
+                }
+
+                // if some were killed by env., but not all, save the dead's winPositions
+                if (playersKilledByEnvironment.length > 0 && playersKilledByEnvironment.length < countAliveBeforeEnvironmentalDeaths) {
+                    const countRemaining = countAliveBeforeEnvironmentalDeaths - playersKilledByEnvironment.length;
+                    for (let i = 0; i < playersKilledByEnvironment.length; i++) {
+                        const player = playersKilledByEnvironment[i];
+                        player.winPosition = countRemaining + 1;
+                        await player.save();
+                    }
+                }
+
+                // if only one player remains, they win
+                if (playersKilledByEnvironment.length > 0 && countAliveBeforeEnvironmentalDeaths - playersKilledByEnvironment.length == 1) {
+                    let lastBro = this.constructor.getLivingPlayers(livingPlayers)[0];
+                    lastBro.winPosition = 1;
+                    await lastBro.save();
+                    await this.endGameAndBeginAnew('won', [lastBro], guild);
+                    return;
+                }
+
+                await this.save();
 
             } catch (error) {
                 console.log("game.doTick error", error)
@@ -406,11 +431,11 @@ module.exports = function (sequelize) {
                 throw new Error("You aren't in this game")
             }
 
-            if (gp.actions < 1 && !['giveHP', 'juryVote'].includes(action)) {
+            if (gp.actions < 1 && !['giveHP', 'juryVote', 'startFire'].includes(action)) {
                 throw new Error("You don't have enough AP")
             }
 
-            if (gp.status != 'alive' && action != 'juryVote') {
+            if (gp.status != 'alive' && !['juryVote', 'startFire'].includes(action)) {
                 throw new Error("You're not alive.")
             }
 
@@ -437,14 +462,14 @@ module.exports = function (sequelize) {
             //for aimed actions, check range and target values
             const currentX = gp.positionX
             const currentY = gp.positionY
-            if (['move', 'shoot', 'giveAP', 'giveHP', 'juryVote'].includes(action)) {
+            if (['move', 'shoot', 'giveAP', 'giveHP', 'juryVote', 'startFire'].includes(action)) {
                 if (isNaN(Number(targetX)) || isNaN(Number(targetY))) {
                     throw new Error("Target is not numeric")
                 }
 
                 let testRange = 1
                 if (action != 'move') testRange = gp.range
-                if (action != 'juryVote') {
+                if (!['juryVote', 'startFire'].includes(action)) {
                     if (targetX < currentX - testRange || targetX > currentX + testRange || targetY < currentY - testRange || targetY > currentY + testRange) {
                         throw new Error("That is out of range")
                     }
@@ -488,6 +513,43 @@ module.exports = function (sequelize) {
                 return "Voted!"
             }
 
+            if (action == 'startFire') {
+                if (gp.health > 0) {
+                    throw new Error("You need to be dead to start fires")
+                }
+
+                if (gp.juryVotesToSpend == 0) {
+                    throw new Error("You're out of JP")
+                }
+
+                if (targetGamePlayer != null) {
+                    throw new Error("Sorry, you can't light your friends on fire")
+                }
+
+                gp.juryVotesToSpend = 0
+
+
+                Stats.increment(gp, Stats.GamePlayerStats.startFire)
+
+                if (!Array.isArray(this.boardObjectLocations)) {
+                    this.boardObjectLocations = []
+                }
+                this.boardObjectLocations.push({
+                    type: 'fire',
+                    x: Number(targetX),
+                    y: Number(targetY)
+                })
+                this.changed('boardObjectLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
+
+                await this.save()
+                await gp.save()
+                await move.save()
+
+                this.notify("<@" + gp.PlayerId + "> 🗳️ **started a damned fire**! 🔥")
+
+                return "Ignited!"
+            }
+
             if (action == 'upgrade') {
                 if (gp.actions < 3) {
                     throw new Error("You don't have enough AP")
@@ -525,17 +587,30 @@ module.exports = function (sequelize) {
                     throw new Error("A player is already in that space")
                 }
 
-                // did they collect a heart
+                // did they collide with an object
+                // check for hearts, fires and walls
                 let collectedHeart = false
-                for (let i = 0; i < this.boardHeartLocations.length; i++) {
-                    const heartSpot = this.boardHeartLocations[i];
-                    if (heartSpot[0] == targetX && heartSpot[1] == targetY) {
-                        gp.health += 1
-                        this.boardHeartLocations.splice(i, 1)
-                        this.changed('boardHeartLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
-                        await this.save()
-                        collectedHeart = true
-                        break
+                let gotBurned = false
+                for (let i = 0; i < this.boardObjectLocations.length; i++) {
+                    const objectSpot = this.boardObjectLocations[i];
+                    if (objectSpot.x == targetX && objectSpot.y == targetY) {
+                        //check type, do stuff
+                        if (objectSpot.type == 'heart') {
+                            gp.health += 1
+                            this.boardObjectLocations.splice(i, 1)
+                            this.changed('boardObjectLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
+                            await this.save()
+                            collectedHeart = true
+                            break
+                        }
+                        if (objectSpot.type == 'fire') {
+                            if (gp.health == 1) {
+                                throw new Error("You don't have enough health to walk through fire")
+                            }
+                            gp.health -= 1
+                            gotBurned = true
+                        }
+
                     }
                 }
 
@@ -546,6 +621,11 @@ module.exports = function (sequelize) {
                 gp.actions -= 1
 
                 const movementVerb = this.sequelize.models.Move.getRandomMovementDescriptionWithEmoji()
+                let walkedInFireText = ''
+                if (gotBurned) {
+                    walkedInFireText = ' *through fire* 🔥'
+                }
+
                 let heartPickupText = ''
                 if (collectedHeart) {
                     heartPickupText = ' and collected a heart 💖'
@@ -555,7 +635,7 @@ module.exports = function (sequelize) {
 
                 await gp.save()
                 await move.save()
-                this.notify(`<@${gp.PlayerId}> ${movementVerb} ${directionDescription}${heartPickupText}!`)
+                this.notify(`<@${gp.PlayerId}> ${movementVerb}${walkedInFireText}${directionDescription}${heartPickupText}!`)
 
                 return "Moved!"
             }
@@ -740,12 +820,16 @@ module.exports = function (sequelize) {
             const gamePlayers = await this.getGamePlayers()
             const freeSpace = await this.#findClearSpace(gamePlayers)
 
-            if (!Array.isArray(this.boardHeartLocations)) {
-                this.boardHeartLocations = []
+            if (!Array.isArray(this.boardObjectLocations)) {
+                this.boardObjectLocations = []
             }
-            this.boardHeartLocations.push(freeSpace)
+            this.boardObjectLocations.push({
+                type: 'heart',
+                x: freeSpace[0],
+                y: freeSpace[1]
+            })
 
-            this.changed('boardHeartLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
+            this.changed('boardObjectLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
 
             //console.log('added a heart at', freeSpace)
             const saveResult = await this.save()
@@ -885,7 +969,7 @@ module.exports = function (sequelize) {
                 allowNull: false,
                 defaultValue: 2
             },
-            boardHeartLocations: {
+            boardObjectLocations: {
                 type: DataTypes.JSON,
                 allowNull: true,
                 defaultValue: []
