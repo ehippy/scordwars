@@ -286,7 +286,7 @@ app.post('/games/:teamId/:gameId/act', verifyToken, async (req, res) => {
   const targetX = req.body.targetX
   const targetY = req.body.targetY
 
-  if (!['move', 'shoot', 'giveAP', 'giveHP', 'upgrade', 'heal', 'juryVote'].includes(action)) {
+  if (!['move', 'shoot', 'giveAP', 'giveHP', 'upgrade', 'heal', 'juryVote', 'startFire'].includes(action)) {
     return res.status(400).send("Action '" + action + "' not supported")
   }
 
