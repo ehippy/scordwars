@@ -686,7 +686,7 @@ module.exports = function (sequelize) {
 
                 await gp.save()
                 await move.save()
-                this.notify(`<@${gp.PlayerId}> ${movementVerb}${walkedInFireText}${directionDescription}${heartPickupText}!`)
+                this.notify(`<@${gp.PlayerId}> ${movementVerb}${walkedInFireText} ${directionDescription}${heartPickupText}!`)
 
                 return "Moved!"
             }
