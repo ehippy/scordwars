@@ -709,7 +709,7 @@ module.exports = function (sequelize) {
                             break
                         }
                         if (objectSpot.type == 'power') {
-                            gp.actions += Math.floor(Math.random() * 3) + 1
+                            gp.actions += Math.floor(Math.random() * 3) + 2
                             this.boardObjectLocations.splice(i, 1)
                             this.changed('boardObjectLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
                             await this.save()
