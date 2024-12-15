@@ -49,7 +49,8 @@ module.exports = {
             resurrector: 'resurrector',
             zapped: 'zapped',
             startFire: 'startFire',
-            gamePoint: 'gamePoint'
+            gamePoint: 'gamePoint',
+            pickedUpAp: 'pickedUpAp'
         }
     }
 }

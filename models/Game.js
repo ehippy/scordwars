@@ -242,11 +242,19 @@ module.exports = function (sequelize) {
                 await this.giveAllLivingPlayersAP(2)
                 await this.respawnDeadPlayers(players)
 
-                let heartMsg = ''
-                const heartChance = 0.25
-                if (Math.random() > heartChance) {
-                    await this.addHeart()
-                    heartMsg = " A heart appeared! 💗 Is it nearby?"
+                //don't add so many hearts and powers if the board is covered in them
+                const numCurrentObjs = this.boardObjectLocations.length;
+                const maxObjects = Math.floor(this.boardWidth * 1.6)
+                const newObjectsWanted = maxObjects - numCurrentObjs;
+                if (newObjectsWanted > 0) {
+
+                    for (let i = 0; i < newObjectsWanted / 2; i++) {
+                        await this.addHeart(players)
+                    }
+
+                    for (let i = 0; i < newObjectsWanted / 2; i++) {
+                        await this.addPower(players)
+                    }
                 }
 
                 //expand fires outward
@@ -280,7 +288,7 @@ module.exports = function (sequelize) {
 
 
                 if (this.suddenDeathRound == 0) {
-                    this.notify("⚡ Infight distributed AP! [Make a move](" + this.getUrl() + ") and watch your back!" + heartMsg)
+                    this.notify("⚡ Infight distributed AP! [Make a move](" + this.getUrl() + ") and watch your back!")
                 }
 
                 if (this.suddenDeathRound > 0 && false) { // disabled for now
@@ -686,6 +694,7 @@ module.exports = function (sequelize) {
                 // did they collide with an object
                 // check for hearts, fires and walls
                 let collectedHeart = false
+                let collectedAP = false
                 let gotBurned = false
                 for (let i = 0; i < this.boardObjectLocations.length; i++) {
                     const objectSpot = this.boardObjectLocations[i];
@@ -697,6 +706,14 @@ module.exports = function (sequelize) {
                             this.changed('boardObjectLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
                             await this.save()
                             collectedHeart = true
+                            break
+                        }
+                        if (objectSpot.type == 'power') {
+                            gp.actions += Math.floor(Math.random() * 3) + 1
+                            this.boardObjectLocations.splice(i, 1)
+                            this.changed('boardObjectLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
+                            await this.save()
+                            collectedAP = true
                             break
                         }
                         if (objectSpot.type == 'fire') {
@@ -726,6 +743,12 @@ module.exports = function (sequelize) {
                 if (collectedHeart) {
                     heartPickupText = ' and collected a heart 💖'
                     Stats.increment(gp, Stats.GamePlayerStats.pickedUpHp)
+                }
+
+                let apPickupText = ''
+                if (collectedAP) {
+                    heartPickupText = ' and collected AP ⚡'
+                    Stats.increment(gp, Stats.GamePlayerStats.pickedUpAp)
                 }
                 Stats.increment(gp, Stats.GamePlayerStats.walked)
 
@@ -920,29 +943,31 @@ module.exports = function (sequelize) {
             this.changed('boardObjectLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
         }
 
-        async addHeart() {
-            const gamePlayers = await this.getGamePlayers()
+        async findFreeSpaceAndAddObj(gamePlayers, obj) {
             try {
                 const freeSpace = await this.#findClearSpace(gamePlayers)
-                this.addObject({
-                    type: 'heart',
-                    x: freeSpace[0],
-                    y: freeSpace[1]
-                })
+                obj.x = freeSpace[0]
+                obj.y = freeSpace[1]
 
-
-                this.changed('boardObjectLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
-
-
-                this.changed('boardObjectLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
-
+                this.addObject(obj)
                 //console.log('added a heart at', freeSpace)
-                const saveResult = await this.save()
+                await this.save()
                 //console.log('saveResult', saveResult)
             } catch (error) {
-                console.log("couldnt add heart", error)
+                console.log(`couldnt add obj: ${obj.type}`, error)
             }
+        }
 
+        async addHeart(gamePlayers) {
+            this.findFreeSpaceAndAddObj(gamePlayers, {
+                type: 'heart'
+            })
+        }
+
+        async addPower(gamePlayers) {
+            this.findFreeSpaceAndAddObj(gamePlayers, {
+                type: 'power'
+            })
         }
 
         static async startGamesNeedingToStart() {
