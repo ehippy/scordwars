@@ -166,6 +166,8 @@ module.exports = function (sequelize) {
                 y: Math.floor(this.boardHeight / 2)
             })
 
+            await this.sprinklePickups(gamePlayers)
+
             //set the next AP distro time, change the game status to active
             const thisMoment = new Date()
             const nextTick = new Date(+new Date(thisMoment) + this.minutesPerActionDistro * 60 * 1000)
@@ -242,20 +244,7 @@ module.exports = function (sequelize) {
                 await this.giveAllLivingPlayersAP(2)
                 await this.respawnDeadPlayers(players)
 
-                //don't add so many hearts and powers if the board is covered in them
-                const numCurrentObjs = this.boardObjectLocations.length;
-                const maxObjects = Math.floor(this.boardWidth * 1.8)
-                const newObjectsWanted = maxObjects - numCurrentObjs;
-                if (newObjectsWanted > 0) {
-
-                    for (let i = 0; i < newObjectsWanted / 2; i++) {
-                        await this.addHeart(players)
-                    }
-
-                    for (let i = 0; i < newObjectsWanted / 2; i++) {
-                        await this.addPower(players)
-                    }
-                }
+                await this.sprinklePickups(players)
 
                 //expand fires outward
                 this.expandFires()
@@ -369,6 +358,22 @@ module.exports = function (sequelize) {
                 console.log("game.doTick error", error)
             }
 
+        }
+
+        async sprinklePickups(players) {
+            const numCurrentObjs = this.boardObjectLocations.length
+            const maxObjects = Math.floor(this.boardWidth * 1.8)
+            const newObjectsWanted = maxObjects - numCurrentObjs
+            if (newObjectsWanted > 0) {
+
+                for (let i = 0; i < newObjectsWanted / 2; i++) {
+                    await this.addHeart(players)
+                }
+
+                for (let i = 0; i < newObjectsWanted / 2; i++) {
+                    await this.addPower(players)
+                }
+            }
         }
 
         async respawnDeadPlayers(players) {
