@@ -102,6 +102,18 @@ module.exports = function (sequelize) {
             }
         }
 
+        async removeObjectInSpace(position) {
+            for (let i = 0; i < this.boardObjectLocations.length; i++) {
+                const boardObject = this.boardObjectLocations[i];
+                if (boardObject.x == position[0] && boardObject.y == position[1]) {
+                    this.boardObjectLocations.splice(i, 1);
+                    this.changed('boardObjectLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
+                    await this.save();
+                    return;
+                }
+            }
+        }
+
         isObjectInSpace(newPos, specificType = null) {
             for (let i = 0; i < this.boardObjectLocations.length; i++) {
                 const boardObject = this.boardObjectLocations[i]
@@ -707,17 +719,13 @@ module.exports = function (sequelize) {
                         //check type, do stuff
                         if (objectSpot.type == 'heart') {
                             gp.health += 1
-                            this.boardObjectLocations.splice(i, 1)
-                            this.changed('boardObjectLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
-                            await this.save()
+                            this.removeObjectInSpace([targetX, targetY])
                             collectedHeart = true
                             break
                         }
                         if (objectSpot.type == 'power') {
                             gp.actions += Math.floor(Math.random() * 3) + 2
-                            this.boardObjectLocations.splice(i, 1)
-                            this.changed('boardObjectLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
-                            await this.save()
+                            this.removeObjectInSpace([targetX, targetY])
                             collectedAP = true
                             break
                         }
@@ -843,6 +851,12 @@ module.exports = function (sequelize) {
             }
 
             if (action == 'shoot') {
+
+                if (this.isObjectInSpace([targetX, targetY], 'fire')) {
+                    this.removeObjectInSpace([targetX, targetY])
+                    this.notify("💦 <@" + gp.PlayerId + "> squirted out a fire! 💦")
+                    if (!targetGamePlayer) return "Squirt!"
+                }
 
                 if (!targetGamePlayer) {
                     throw new Error("No player at that position")
