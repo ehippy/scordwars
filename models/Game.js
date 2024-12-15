@@ -855,7 +855,11 @@ module.exports = function (sequelize) {
                 if (this.isObjectInSpace([targetX, targetY], 'fire')) {
                     this.removeObjectInSpace([targetX, targetY])
                     this.notify("💦 <@" + gp.PlayerId + "> squirted out a fire! 💦")
-                    if (!targetGamePlayer) return "Squirt!"
+                    if (!targetGamePlayer) {
+                        gp.actions -= 1
+                        await gp.save()
+                        return "Squirt!"
+                    }
                 }
 
                 if (!targetGamePlayer) {
