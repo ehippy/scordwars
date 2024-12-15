@@ -159,6 +159,12 @@ module.exports = function (sequelize) {
                 const saveResult = await gamePlayers[index].save()
                 //console.log('saved starting position', saveResult)
             }
+            this.addObject({
+                type: 'goal',
+                x: Math.floor(this.boardWidth / 2),
+                y: Math.floor(this.boardHeight / 2)
+            })
+
             //set the next AP distro time, change the game status to active
             const thisMoment = new Date()
             const nextTick = new Date(+new Date(thisMoment) + this.minutesPerActionDistro * 60 * 1000)
@@ -166,11 +172,12 @@ module.exports = function (sequelize) {
             this.startTime = thisMoment
             this.nextTickTime = nextTick
 
-            const gameSaved = await this.save()
+            await this.save()
 
             this.notify("## 🎲 **Game on!** 🎮 The latest [Infight.io game](" + this.getUrl() + ") has started! Band together to 👑 conquer others! Be the last.")
 
         }
+
         findOpenPositionAroundPerimeter(gamePlayers) {
             const perimeterPositions = []
 
@@ -216,40 +223,25 @@ module.exports = function (sequelize) {
                 this.nextTickTime = nextTick
                 const gameSaved = await this.save()
 
-                //do jury vote count
-                let votedGamePlayer = await this.sequelize.models.GamePlayer.findOne({
-                    where: {
-                        GameId: this.id,
-                        juryVotesAgainst: {
-                            [Op.gt]: 0
-                        }
-                    },
-                    order: [
-                        ['juryVotesAgainst', 'DESC']
-                    ]
-                })
+                await this.giveAllLivingPlayersAP(2)
 
-                if (votedGamePlayer) {
-                    const tastyTreats = ["🍩", "🍪", "🍫", "🍿", "🍨", "🍦", "🍭", "🍬", "🥧", "🧁", "🎂", "🍰"];
-                    const randomTreat = tastyTreats[Math.floor(Math.random() * tastyTreats.length)];
-
-                    this.notify(randomTreat + " **The dead have spoken!** <@" + votedGamePlayer.PlayerId + "> got an EXTRA AP treat! " + randomTreat)
-
-                    await this.sequelize.query('UPDATE "GamePlayers" SET actions = actions + 1 WHERE id = ?', {
-                        replacements: [votedGamePlayer.id,]
-                    })
-                    Stats.increment(votedGamePlayer, Stats.GamePlayerStats.treated)
+                let players = await this.getGamePlayers()
+                const deadPlayers = players.filter(player => player.status === 'dead');
+                for (const player of deadPlayers) {
+                    const respawnPos = this.findOpenPositionAroundPerimeter(players);
+                    player.positionX = respawnPos[0];
+                    player.positionY = respawnPos[1];
+                    player.health = 3;
+                    player.actions = 3;
+                    player.status = 'alive';
+                    player.deathTime = null;
+                    player.winPosition = null;
+                    await player.save();
                 }
-
-                await this.giveAllLivingPlayersAP(1)
-
-                await this.sequelize.query('UPDATE "GamePlayers" SET "juryVotesAgainst" = 0 WHERE "GameId" = ?', {
-                    replacements: [this.id]
-                })
-
-                await this.sequelize.query('UPDATE "GamePlayers" SET "juryVotesToSpend" = 1 WHERE "GameId" = ? AND status = ?', {
-                    replacements: [this.id, 'dead']
-                })
+                if (deadPlayers.length > 0) {
+                    const respawnedPlayerIds = deadPlayers.map(player => `<@${player.PlayerId}>`).join(', ');
+                    this.notify(`${respawnedPlayerIds} are back in the game!`);
+                }
 
                 let heartMsg = ''
                 const heartChance = 0.25
@@ -259,40 +251,11 @@ module.exports = function (sequelize) {
                 }
 
                 //expand fires outward
-                const newFireChance = 0.2
-                try {
-                    for (let i = 0; i < this.boardObjectLocations.length; i++) {
-                        let obj = this.boardObjectLocations[i];
-                        if (obj.type == 'fire') {
-                            if (Math.random() < newFireChance) {
-                                
-                                const directions = [
-                                    [-1, 0], [1, 0], [0, -1], [0, 1], // cardinal directions
-                                    [-1, -1], [1, 1], [-1, 1], [1, -1] // diagonal directions
-                                ];
-                                const randomDirection = directions[Math.floor(Math.random() * directions.length)];
-                                const newFireX = obj.x + randomDirection[0];
-                                const newFireY = obj.y + randomDirection[1];
-                                if (newFireX >= 0 && newFireX < this.boardWidth && newFireY >= 0 && newFireY < this.boardHeight && !this.isObjectInSpace([newFireX, newFireY], 'fire')) {
-                                    this.boardObjectLocations.push({
-                                        type: 'fire',
-                                        x: newFireX,
-                                        y: newFireY
-                                    })
-                                    this.changed('boardObjectLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
-                                }
-                            }
-                        }
-    
-                    }
-                } catch (error) {
-                    console.log("fire xpansion err", error)
-                }
-                
+                this.expandFires()
 
                 //burn people standing in fire
                 let playersKilledByEnvironment = []
-                const players = await this.getGamePlayers();
+                players = await this.getGamePlayers();
                 const livingPlayers = this.constructor.getLivingPlayers(players)
                 const countAliveBeforeEnvironmentalDeaths = livingPlayers.length;
                 let numBurnedByFire = 0
@@ -321,7 +284,7 @@ module.exports = function (sequelize) {
                     this.notify("⚡ Infight distributed AP! [Make a move](" + this.getUrl() + ") and watch your back!" + heartMsg)
                 }
 
-                if (this.suddenDeathRound > 0) {
+                if (this.suddenDeathRound > 0 && false) { // disabled for now
                     const edgeDistance = this.suddenDeathRound; // Define the distance from the edge you want to check
 
                     await this.giveAllLivingPlayersAP(2)
@@ -399,6 +362,37 @@ module.exports = function (sequelize) {
                 console.log("game.doTick error", error)
             }
 
+        }
+
+        expandFires() {
+            const newFireChance = 0.2
+            try {
+                for (let i = 0; i < this.boardObjectLocations.length; i++) {
+                    let obj = this.boardObjectLocations[i]
+                    if (obj.type == 'fire') {
+                        if (Math.random() < newFireChance) {
+
+                            const directions = [
+                                [-1, 0], [1, 0], [0, -1], [0, 1], // cardinal directions
+                                [-1, -1], [1, 1], [-1, 1], [1, -1] // diagonal directions
+                            ]
+                            const randomDirection = directions[Math.floor(Math.random() * directions.length)]
+                            const newFireX = obj.x + randomDirection[0]
+                            const newFireY = obj.y + randomDirection[1]
+                            if (newFireX >= 0 && newFireX < this.boardWidth && newFireY >= 0 && newFireY < this.boardHeight && !this.isObjectInSpace([newFireX, newFireY], 'fire')) {
+                                this.addObject({
+                                    type: 'fire',
+                                    x: newFireX,
+                                    y: newFireY
+                                })
+                            }
+                        }
+                    }
+                }
+
+            } catch (error) {
+                console.log("fire xpansion err", error)
+            }
         }
 
         async giveAllLivingPlayersAP(ap) {
@@ -603,18 +597,13 @@ module.exports = function (sequelize) {
 
                 gp.juryVotesToSpend = 0
 
-
                 Stats.increment(gp, Stats.GamePlayerStats.startFire)
 
-                if (!Array.isArray(this.boardObjectLocations)) {
-                    this.boardObjectLocations = []
-                }
-                this.boardObjectLocations.push({
+                this.addObject({
                     type: 'fire',
                     x: Number(targetX),
                     y: Number(targetY)
                 })
-                this.changed('boardObjectLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
 
                 await this.save()
                 await gp.save()
@@ -838,11 +827,11 @@ module.exports = function (sequelize) {
                 this.notify(shotMsg)
 
                 //start sudden death
-                if (countAlive == 2 && this.suddenDeathRound == 0) {
-                    this.suddenDeathRound = 1
-                    await this.save()
-                    this.notify("🚨 **Sudden Death!** Only two players remain! The storm approaches! 🌪️")
-                }
+                // if (countAlive == 2 && this.suddenDeathRound == 0) {
+                //     this.suddenDeathRound = 1
+                //     await this.save()
+                //     this.notify("🚨 **Sudden Death!** Only two players remain! The storm approaches! 🌪️")
+                // }
 
                 if (countAlive == 1) {
                     gp.winPosition = 1
@@ -891,20 +880,28 @@ module.exports = function (sequelize) {
             return livingPlayers
         }
 
+        addObject(obj) {
+            if (!Array.isArray(this.boardObjectLocations)) {
+                this.boardObjectLocations = []
+            }
+            this.boardObjectLocations.push(obj)
+            this.changed('boardObjectLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
+        }
+
         async addHeart() {
             const gamePlayers = await this.getGamePlayers()
             try {
                 const freeSpace = await this.#findClearSpace(gamePlayers)
-
-                if (!Array.isArray(this.boardObjectLocations)) {
-                    this.boardObjectLocations = []
-                }
-                this.boardObjectLocations.push({
+                this.addObject({
                     type: 'heart',
                     x: freeSpace[0],
                     y: freeSpace[1]
                 })
     
+    
+                this.changed('boardObjectLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
+    
+                
                 this.changed('boardObjectLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
     
                 //console.log('added a heart at', freeSpace)
