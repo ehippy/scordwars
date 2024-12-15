@@ -596,7 +596,7 @@ module.exports = function (sequelize) {
                 await gp.save()
                 await move.save()
 
-                this.notify("<@" + gp.PlayerId + "> 🗳️ **started a damned fire**! 🔥")
+                this.notify("<@" + gp.PlayerId + ">'s ghost 🔥 **lit a fire**! 🔥")
 
                 return "Ignited!"
             }
