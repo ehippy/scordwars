@@ -244,7 +244,7 @@ module.exports = function (sequelize) {
 
                 //don't add so many hearts and powers if the board is covered in them
                 const numCurrentObjs = this.boardObjectLocations.length;
-                const maxObjects = Math.floor(this.boardWidth * 1.6)
+                const maxObjects = Math.floor(this.boardWidth * 1.8)
                 const newObjectsWanted = maxObjects - numCurrentObjs;
                 if (newObjectsWanted > 0) {
 
