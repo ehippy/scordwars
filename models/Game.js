@@ -150,7 +150,9 @@ module.exports = function (sequelize) {
             this.minutesPerActionDistro = guild.actionTimerMinutes
 
             for (let index = 0; index < gamePlayers.length; index++) {
-                const startingPos = await this.#findClearSpace(gamePlayers);
+                //find an open space around the perimiter of the board
+                let startingPos = this.findOpenPositionAroundPerimeter(gamePlayers)
+                
                 gamePlayers[index].positionX = startingPos[0]
                 gamePlayers[index].positionY = startingPos[1]
 
@@ -169,6 +171,28 @@ module.exports = function (sequelize) {
             this.notify("## 🎲 **Game on!** 🎮 The latest [Infight.io game](" + this.getUrl() + ") has started! Band together to 👑 conquer others! Be the last.")
 
         }
+        findOpenPositionAroundPerimeter(gamePlayers) {
+            const perimeterPositions = []
+
+            // Top and bottom rows
+            for (let x = 0; x < this.boardWidth; x++) {
+                perimeterPositions.push([x, 0]) // Top row
+                perimeterPositions.push([x, this.boardHeight - 1]) // Bottom row
+            }
+
+            // Left and right columns
+            for (let y = 1; y < this.boardHeight - 1; y++) {
+                perimeterPositions.push([0, y]) // Left column
+                perimeterPositions.push([this.boardWidth - 1, y]) // Right column
+            }
+
+            let startingPos
+            do {
+                startingPos = perimeterPositions[Math.floor(Math.random() * perimeterPositions.length)]
+            } while (this.isPlayerInSpace(gamePlayers, startingPos) || this.isObjectInSpace(startingPos))
+            return startingPos
+        }
+
         getUrl() {
             return process.env.UI_BASE_URL + '/games/' + this.GuildId + '/' + this.id
         }
