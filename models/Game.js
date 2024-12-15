@@ -601,15 +601,15 @@ module.exports = function (sequelize) {
                 }
 
                 gp.juryVotesToSpend = 0
-                targetGamePlayer.juryVotesAgainst += 1
-                Stats.increment(gp, Stats.GamePlayerStats.castVote)
-                Stats.increment(targetGamePlayer, Stats.GamePlayerStats.receivedVote)
+                targetGamePlayer.actions += 1
+                Stats.increment(gp, Stats.GamePlayerStats.gaveTreat)
+                Stats.increment(targetGamePlayer, Stats.GamePlayerStats.wasTreated)
 
                 await gp.save()
                 await targetGamePlayer.save()
                 await move.save()
 
-                this.notify("<@" + gp.PlayerId + "> 🗳️ **voted** to treat someone! 🍬")
+                this.notify("<@" + gp.PlayerId + "> 🗳️ **treated** someone to an extra AP! 🍬")
 
                 return "Voted!"
             }

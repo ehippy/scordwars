@@ -43,7 +43,7 @@ module.exports = {
             upgradedRange: 'upgradedRange',
             healed: 'healed',
             wasTreated: 'wasTreated',
-            castVote: 'castVote',
+            gaveTreat: 'gaveTreat',
             receivedVote: 'receivedVote',
             resurrectee: 'resurrectee',
             resurrector: 'resurrector',
