@@ -1,6 +1,7 @@
 const { Sequelize, DataTypes, Model, Op } = require('sequelize')
 const { Stats } = require('./StatTracker')
 const GamePlayer = require('./GamePlayer')
+const StatTracker = require('./StatTracker')
 
 module.exports = function (sequelize) {
 
@@ -89,7 +90,7 @@ module.exports = function (sequelize) {
                 }
 
                 //did we crash into an object?
-                if (this.isObjectInSpace(newPos)){
+                if (this.isObjectInSpace(newPos)) {
                     foundClearSpace = false
                     continue
                 }
@@ -107,7 +108,7 @@ module.exports = function (sequelize) {
                 if (boardObject.x == newPos[0] && boardObject.y == newPos[1]) {
                     if (specificType != null) {
                         return boardObject.type == specificType
-                    } 
+                    }
                     return true
                 }
             }
@@ -118,7 +119,7 @@ module.exports = function (sequelize) {
             for (let i = 0; i < gamePlayers.length; i++) {
                 const gp = gamePlayers[i]
                 if (gp.positionX == newPos[0] && gp.positionY == newPos[1]) {
-                     return true
+                    return true
                 }
             }
             return false
@@ -152,7 +153,7 @@ module.exports = function (sequelize) {
             for (let index = 0; index < gamePlayers.length; index++) {
                 //find an open space around the perimiter of the board
                 let startingPos = this.findOpenPositionAroundPerimeter(gamePlayers)
-                
+
                 gamePlayers[index].positionX = startingPos[0]
                 gamePlayers[index].positionY = startingPos[1]
 
@@ -223,25 +224,23 @@ module.exports = function (sequelize) {
                 this.nextTickTime = nextTick
                 const gameSaved = await this.save()
 
-                await this.giveAllLivingPlayersAP(2)
-
                 let players = await this.getGamePlayers()
-                const deadPlayers = players.filter(player => player.status === 'dead');
-                for (const player of deadPlayers) {
-                    const respawnPos = this.findOpenPositionAroundPerimeter(players);
-                    player.positionX = respawnPos[0];
-                    player.positionY = respawnPos[1];
-                    player.health = 3;
-                    player.actions = 3;
-                    player.status = 'alive';
-                    player.deathTime = null;
-                    player.winPosition = null;
-                    await player.save();
+
+                const playersOnGoals = this.findPlayersOnGoals(players)
+                for (let i = 0; i < playersOnGoals.length; i++) {
+                    const goalPlayer = playersOnGoals[i];
+                    if (goalPlayer.status == 'alive') {
+                        const gpScore = Stats.increment(goalPlayer, Stats.GamePlayerStats.gamePoint)
+                        this.notify(`<@${goalPlayer.PlayerId}> 🏆 held a goal and scored a point! They have *${gpScore}/5* points to win! 🏆`);
+                        await goalPlayer.save()
+                        if (gpScore >= 5) { // game is won at five points... TODO: make configurable, handle ties
+                            await this.endGameAndBeginAnew('won', [goalPlayer], guild);
+                        }
+                    }
                 }
-                if (deadPlayers.length > 0) {
-                    const respawnedPlayerIds = deadPlayers.map(player => `<@${player.PlayerId}>`).join(', ');
-                    this.notify(`${respawnedPlayerIds} are back in the game!`);
-                }
+
+                await this.giveAllLivingPlayersAP(2)
+                await this.respawnDeadPlayers(players)
 
                 let heartMsg = ''
                 const heartChance = 0.25
@@ -362,6 +361,39 @@ module.exports = function (sequelize) {
                 console.log("game.doTick error", error)
             }
 
+        }
+
+        async respawnDeadPlayers(players) {
+            const deadPlayers = players.filter(player => player.status === 'dead')
+            for (const player of deadPlayers) {
+                const respawnPos = this.findOpenPositionAroundPerimeter(players)
+                player.positionX = respawnPos[0]
+                player.positionY = respawnPos[1]
+                player.health = 3
+                player.actions = 3
+                player.status = 'alive'
+                player.deathTime = null
+                player.winPosition = null
+                await player.save()
+            }
+            if (deadPlayers.length > 0) {
+                const respawnedPlayerIds = deadPlayers.map(player => `<@${player.PlayerId}>`).join(', ')
+                this.notify(`${respawnedPlayerIds} are back in the game!`)
+            }
+        }
+
+        findPlayersOnGoals(players) {
+            const goalObjects = this.boardObjectLocations.filter(obj => obj.type === 'goal')
+            const playersOnGoals = []
+
+            for (const goal of goalObjects) {
+                for (const player of players) {
+                    if (player.positionX === goal.x && player.positionY === goal.y) {
+                        playersOnGoals.push(player)
+                    }
+                }
+            }
+            return playersOnGoals
         }
 
         expandFires() {
@@ -897,13 +929,13 @@ module.exports = function (sequelize) {
                     x: freeSpace[0],
                     y: freeSpace[1]
                 })
-    
-    
+
+
                 this.changed('boardObjectLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
-    
-                
+
+
                 this.changed('boardObjectLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
-    
+
                 //console.log('added a heart at', freeSpace)
                 const saveResult = await this.save()
                 //console.log('saveResult', saveResult)

@@ -11,7 +11,8 @@ module.exports = {
             entity.stats[stat]++
             entity.changed('stats', true); // deep change operations in a json field aren't automatically detected by sequelize
     
-            if (doSave) entity.save()
+            if (doSave) entity.save();
+            return entity.stats[stat]
         },
     
         sumManyEntitysStats: (entityArray) => {
@@ -47,7 +48,8 @@ module.exports = {
             resurrectee: 'resurrectee',
             resurrector: 'resurrector',
             zapped: 'zapped',
-            startFire: 'startFire'
+            startFire: 'startFire',
+            gamePoint: 'gamePoint'
         }
     }
 }
