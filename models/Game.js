@@ -611,7 +611,7 @@ module.exports = function (sequelize) {
 
                 this.notify("<@" + gp.PlayerId + "> 🗳️ **treated** someone to an extra AP! 🍬")
 
-                return "Voted!"
+                return "Treated!"
             }
 
             if (action == 'startFire') {
