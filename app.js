@@ -202,8 +202,6 @@ app.get('/games/:teamId/:gameId', async (req, res) => {
       }
     }, {
       model: infightDB.Guild
-    }, {
-      model: infightDB.Move
     }
     ]
   });
