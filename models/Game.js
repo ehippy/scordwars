@@ -438,6 +438,7 @@ module.exports = function (sequelize) {
         }
 
         expandFires() {
+            let firesExpanded = 0
             const newFireChance = 0.2
             try {
                 for (let i = 0; i < this.boardObjectLocations.length; i++) {
@@ -453,6 +454,7 @@ module.exports = function (sequelize) {
                             const newFireX = obj.x + randomDirection[0]
                             const newFireY = obj.y + randomDirection[1]
                             if (newFireX >= 0 && newFireX < this.boardWidth && newFireY >= 0 && newFireY < this.boardHeight && !this.isObjectInSpace([newFireX, newFireY], 'fire')) {
+                                firesExpanded++
                                 this.addObject({
                                     type: 'fire',
                                     x: newFireX,
@@ -462,7 +464,9 @@ module.exports = function (sequelize) {
                         }
                     }
                 }
-
+                if (firesExpanded > 0) {
+                    this.notify(`🔥 ** ${firesExpanded} Fires** spread! 🔥`)
+                }
             } catch (error) {
                 console.log("fire xpansion err", error)
             }
