@@ -857,6 +857,9 @@ module.exports = function (sequelize) {
                 if (targetGamePlayer == null) {
                     throw new Error("There's no player at that target to gift")
                 }
+                if (targetGamePlayer.status != 'alive') {
+                    throw new Error("They dead!")
+                }
 
                 targetGamePlayer.actions += 1
                 gp.actions -= 1
