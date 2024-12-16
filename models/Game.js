@@ -131,6 +131,17 @@ module.exports = function (sequelize) {
             return null
         }
 
+        countObjectsOfType(type) {
+            let count = 0
+            for (let i = 0; i < this.boardObjectLocations.length; i++) {
+                const boardObject = this.boardObjectLocations[i]
+                if (boardObject.type == type) {
+                    count++
+                }
+            }
+            return count
+        }
+
         isPlayerInSpace(gamePlayers, newPos) {
             for (let i = 0; i < gamePlayers.length; i++) {
                 const gp = gamePlayers[i]
@@ -377,19 +388,23 @@ module.exports = function (sequelize) {
         }
 
         async sprinklePickups(players) {
-            const numCurrentObjs = this.boardObjectLocations.length
-            const maxObjects = Math.floor(this.boardWidth * 1.8)
-            const newObjectsWanted = maxObjects - numCurrentObjs
-            if (newObjectsWanted > 0) {
 
-                for (let i = 0; i < newObjectsWanted / 2; i++) {
+            const numHearts = this.countObjectsOfType('heart')
+            const desiredHearts = Math.floor(this.boardWidth * 0.9)
+            if (numHearts < desiredHearts) {
+                for (let i = 0; i < desiredHearts-numHearts; i++) {
                     await this.addHeart(players)
                 }
+            }
 
-                for (let i = 0; i < newObjectsWanted / 2; i++) {
+            const numPowers = this.countObjectsOfType('power')
+            const desiredPowers = Math.floor(this.boardWidth * 0.9)
+            if (numPowers < desiredPowers) {
+                for (let i = 0; i < desiredPowers-numPowers; i++) {
                     await this.addPower(players)
                 }
             }
+
         }
 
         async respawnDeadPlayers(players) {
