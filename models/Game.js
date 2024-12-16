@@ -771,9 +771,25 @@ module.exports = function (sequelize) {
                     throw new Error("A player is already in that space")
                 }
 
-                // did they collide with an object
-
+                const preMovedHp = gp.health;
+                const preMovedAp = gp.actions;
                 this.doObjectInteractionsForPlayer(targetX, targetY, gp)
+
+                let moveConsequence = ''
+                if (gp.health < 1) {
+                    this.markPlayerDead(gp)
+                    this.notify("<@" + gp.PlayerId + "> **threw themselves in a fire!** 🔥 ☠️")
+                } else {
+                    if (preMovedHp > gp.health) {
+                        moveConsequence += " through fire 🔥"
+                    }
+                    if (preMovedHp < gp.health) {
+                        moveConsequence += " and picked up a heart 💝"
+                    }
+                    if (preMovedAp < gp.actions) {
+                        moveConsequence += " and picked up a some AP ⚡"
+                    }
+                }
 
                 const directionDescription = this.sequelize.models.Move.describeMoveDirection([gp.positionX, gp.positionY], [targetX, targetY])
                 const movementVerb = this.sequelize.models.Move.getRandomMovementDescriptionWithEmoji()
@@ -786,7 +802,11 @@ module.exports = function (sequelize) {
 
                 await gp.save()
                 await move.save()
-                this.notify(`<@${gp.PlayerId}> ${movementVerb} ${directionDescription}!`)
+
+                if (gp.health > 0) {
+                    this.notify(`<@${gp.PlayerId}> ${movementVerb} ${directionDescription}${moveConsequence}!`)
+                }
+                
 
                 return "Moved!"
             }
