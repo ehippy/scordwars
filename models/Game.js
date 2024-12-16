@@ -178,15 +178,12 @@ module.exports = function (sequelize) {
             this.minutesPerActionDistro = guild.actionTimerMinutes
 
             for (let index = 0; index < gamePlayers.length; index++) {
-                //find an open space around the perimiter of the board
                 let startingPos = this.findOpenPositionAroundPerimeter(gamePlayers)
-
                 gamePlayers[index].positionX = startingPos[0]
                 gamePlayers[index].positionY = startingPos[1]
-
-                const saveResult = await gamePlayers[index].save()
-                //console.log('saved starting position', saveResult)
+                await gamePlayers[index].save()
             }
+
             this.addObject({
                 type: 'goal',
                 x: Math.floor(this.boardWidth / 2),
@@ -741,6 +738,7 @@ module.exports = function (sequelize) {
                     throw new Error("Shove target space is occupied by some nerd");
                 }
 
+                let wasOnGoal = this.isObjectInSpace([targetGamePlayer.positionX, targetGamePlayer.positionY], 'goal')
                 targetGamePlayer.positionX = newX;
                 targetGamePlayer.positionY = newY;
 
@@ -766,6 +764,13 @@ module.exports = function (sequelize) {
 
                 if (preShovedHp == targetGamePlayer.health && preShovedAp == targetGamePlayer.actions) {
                     this.notify("<@" + gp.PlayerId + "> **shoved** <@" + targetGamePlayer.PlayerId + "> out of their way!")
+                }
+
+                if (this.isObjectInSpace([targetGamePlayer.positionX, targetGamePlayer.positionY], 'goal')) {
+                    this.notify(`🚨 <@${targetGamePlayer.PlayerId}> was *SHOVED* onto a goal spot! 🏁 How nice! 🎁`);
+                }
+                if (wasOnGoal) {
+                    this.notify(`🚨 <@${targetGamePlayer.PlayerId}> was *SHOVED* off of a goal spot! 🏁 Drama! 🎭`);
                 }
 
                 await targetGamePlayer.save();
@@ -809,6 +814,8 @@ module.exports = function (sequelize) {
                 const directionDescription = this.sequelize.models.Move.describeMoveDirection([gp.positionX, gp.positionY], [targetX, targetY])
                 const movementVerb = this.sequelize.models.Move.getRandomMovementDescriptionWithEmoji()
 
+                let wasOnGoal = this.isObjectInSpace([gp.positionX, gp.positionY], 'goal')
+
                 gp.positionX = targetX
                 gp.positionY = targetY
                 gp.actions -= 1
@@ -822,6 +829,12 @@ module.exports = function (sequelize) {
                     this.notify(`<@${gp.PlayerId}> ${movementVerb} ${directionDescription}${moveConsequence}!`)
                 }
                 
+                if (this.isObjectInSpace([targetX, targetY], 'goal')) {
+                    this.notify(`🚨 <@${gp.PlayerId}> is on a goal spot! 🏁 Unseat them or they'll score!`);
+                }
+                if (wasOnGoal) {
+                    this.notify(`🚨 <@${gp.PlayerId}> abandoned a goal spot! 🏁 It's your chance! 🏃`);
+                }
 
                 return "Moved!"
             }
