@@ -299,9 +299,9 @@ module.exports = function (sequelize) {
                                     player.status = 'dead'
                                     player.deathTime = new Date()
                                     playersKilledByEnvironment.push(player)
-                                    this.notify("🔥 <@" + player.PlayerId + "> was cooked! 🔥")
+                                    this.notify("🔥 <@" + player.PlayerId + "> was cooked dead! 🔥")
                                 } else {
-                                    this.notify("🔥 <@" + player.PlayerId + "> was burned for 1 HP by an expanded fire! 🔥")
+                                    this.notify("🔥 <@" + player.PlayerId + "> was burned for 1 HP by a fire! 🔥")
                                 }
                                 await player.save()
                             }
