@@ -102,33 +102,42 @@ module.exports = function (sequelize) {
             }
         }
 
-        async removeObjectInSpace(position) {
+        async removeObjectInSpace(position, type = null) {
             for (let i = 0; i < this.boardObjectLocations.length; i++) {
                 const boardObject = this.boardObjectLocations[i];
                 if (boardObject.x == position[0] && boardObject.y == position[1]) {
-                    this.boardObjectLocations.splice(i, 1);
-                    this.changed('boardObjectLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
-                    await this.save();
-                    return;
+                    if (type == null || boardObject.type == type) {
+                        this.boardObjectLocations.splice(i, 1);
+                        this.changed('boardObjectLocations', true); // deep change operations in a json field aren't automatically detected by sequelize
+                        await this.save();
+                        return;
+                    }
                 }
             }
         }
 
         isObjectInSpace(newPos, specificType = null) {
-            let obj = this.getObjectInSpace(newPos)
-            if (obj == null) return false
-            if (specificType != null) return obj.type == specificType
+            let objArray = this.getObjectsInSpace(newPos)
+            if (objArray.length == 0) return false
+            if (specificType != null) {
+                for (let i = 0; i < objArray.length; i++) {
+                    const obj = objArray[i];
+                    if (obj.type == specificType) return true
+                }
+                return false
+            }
             return true
         }
 
-        getObjectInSpace(newPos) {
+        getObjectsInSpace(xyArray) {
+            let foundObjects = []
             for (let i = 0; i < this.boardObjectLocations.length; i++) {
                 const boardObject = this.boardObjectLocations[i]
-                if (boardObject.x == newPos[0] && boardObject.y == newPos[1]) {
-                    return boardObject
+                if (boardObject.x == xyArray[0] && boardObject.y == xyArray[1]) {
+                    foundObjects.push(boardObject)
                 }
             }
-            return null
+            return foundObjects
         }
 
         countObjectsOfType(type) {
@@ -925,7 +934,7 @@ module.exports = function (sequelize) {
             if (action == 'shoot') {
 
                 if (this.isObjectInSpace([targetX, targetY], 'fire')) {
-                    this.removeObjectInSpace([targetX, targetY])
+                    this.removeObjectInSpace([targetX, targetY], 'fire')
                     this.notify("💦 <@" + gp.PlayerId + "> squirted out a fire! 💦")
                     if (!targetGamePlayer) {
                         gp.actions -= 1
@@ -1002,17 +1011,18 @@ module.exports = function (sequelize) {
         }
 
         doObjectInteractionsForPlayer(targetX, targetY, gp) {
-            let objectTheySteppedOn = this.getObjectInSpace([targetX, targetY])
-            if (objectTheySteppedOn != null) {
-                if (objectTheySteppedOn.type == 'heart') {
+            let objectsTheySteppedOn = this.getObjectsInSpace([targetX, targetY])
+            for (let i = 0; i < objectsTheySteppedOn.length; i++) {
+                const obj = objectsTheySteppedOn[i];
+                if (obj.type == 'heart') {
                     gp.health += 1
-                    this.removeObjectInSpace([targetX, targetY])
+                    this.removeObjectInSpace([targetX, targetY], 'heart')
                 }
-                if (objectTheySteppedOn.type == 'power') {
+                if (obj.type == 'power') {
                     gp.actions += Math.floor(Math.random() * 3) + 2
-                    this.removeObjectInSpace([targetX, targetY])
+                    this.removeObjectInSpace([targetX, targetY], 'power')
                 }
-                if (objectTheySteppedOn.type == 'fire') {
+                if (obj.type == 'fire') {
                     gp.health -= 1
                 }
             }
