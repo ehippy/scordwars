@@ -270,7 +270,6 @@ module.exports = function (sequelize) {
 
                 await this.sprinklePickups(players)
 
-                //expand fires outward
                 this.expandFires()
 
                 //burn people standing in fire
@@ -655,7 +654,7 @@ module.exports = function (sequelize) {
                 await targetGamePlayer.save()
                 await move.save()
 
-                this.notify("<@" + gp.PlayerId + "> 🗳️ **treated** someone to an extra AP! 🍬")
+                this.notify("<@" + gp.PlayerId + "> 🗳️ **treated** <@" + targetGamePlayer.PlayerId + "> to an extra AP! 🍬")
 
                 return "Treated!"
             }
