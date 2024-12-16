@@ -115,16 +115,20 @@ module.exports = function (sequelize) {
         }
 
         isObjectInSpace(newPos, specificType = null) {
+            let obj = this.getObjectInSpace(newPos)
+            if (obj == null) return false
+            if (specificType != null) return obj.type == specificType
+            return true
+        }
+
+        getObjectInSpace(newPos) {
             for (let i = 0; i < this.boardObjectLocations.length; i++) {
                 const boardObject = this.boardObjectLocations[i]
                 if (boardObject.x == newPos[0] && boardObject.y == newPos[1]) {
-                    if (specificType != null) {
-                        return boardObject.type == specificType
-                    }
-                    return true
+                    return boardObject
                 }
             }
-            return false
+            return null
         }
 
         isPlayerInSpace(gamePlayers, newPos) {
@@ -537,7 +541,6 @@ module.exports = function (sequelize) {
         }
 
         async doMove(player, action, targetX, targetY) {
-            //TODO: move doMove here from app.js
 
 
             if (this.status != 'active') {
@@ -588,15 +591,15 @@ module.exports = function (sequelize) {
             //for aimed actions, check range and target values
             const currentX = gp.positionX
             const currentY = gp.positionY
-            if (['move', 'shoot', 'giveAP', 'giveHP', 'juryVote', 'startFire'].includes(action)) {
+            if (['move', 'shoot', 'giveAP', 'giveHP', 'juryVote', 'startFire', 'shove'].includes(action)) {
                 if (isNaN(Number(targetX)) || isNaN(Number(targetY))) {
                     throw new Error("Target is not numeric")
                 }
 
-                let testRange = 1
-                if (action != 'move') testRange = gp.range
+                let rangeToCheck = 1
+                if (!['move', 'shove'].includes(action)) rangeToCheck = gp.range
                 if (!['juryVote', 'startFire'].includes(action)) {
-                    if (targetX < currentX - testRange || targetX > currentX + testRange || targetY < currentY - testRange || targetY > currentY + testRange) {
+                    if (targetX < currentX - rangeToCheck || targetX > currentX + rangeToCheck || targetY < currentY - rangeToCheck || targetY > currentY + rangeToCheck) {
                         throw new Error("That is out of range")
                     }
                 }
@@ -703,71 +706,87 @@ module.exports = function (sequelize) {
                 return "Upgraded!"
             }
 
+            if (action == 'shove') {
+                if (gp.actions < 1) {
+                    throw new Error("You don't have enough AP")
+                }
+                
+                //target destination check?
+                const deltaX = Number(targetX) - gp.positionX;
+                const deltaY = Number(targetY) - gp.positionY;
+                const newX = Number(targetX) + deltaX;
+                const newY = Number(targetY) + deltaY;
+
+                if (newX < 0 || newX > this.boardWidth - 1 || newY < 0 || newY > this.boardHeight - 1) {
+                    throw new Error("Shove target is off the board");
+                }
+
+                let allPlayers = await this.getGamePlayers()
+                if (this.isPlayerInSpace(allPlayers, [newX, newY])) {
+                    throw new Error("Shove target space is occupied by some nerd");
+                }
+
+                targetGamePlayer.positionX = newX;
+                targetGamePlayer.positionY = newY;
+
+                const preShovedHp = targetGamePlayer.health;
+                const preShovedAp = targetGamePlayer.actions;
+                this.doObjectInteractionsForPlayer(newX, newY, targetGamePlayer)
+                
+                if (preShovedHp > targetGamePlayer.health) {
+                    if (targetGamePlayer.health < 1) {
+                        this.markPlayerDead(targetGamePlayer)
+                        this.notify("<@" + gp.PlayerId + "> **shoved** <@" + targetGamePlayer.PlayerId + "> to their firey death! 🔥 ☠️")
+                    } else {
+                        this.notify("<@" + gp.PlayerId + "> **shoved** <@" + targetGamePlayer.PlayerId + "> into a fire! 🔥")
+                    }
+                }
+
+                if (preShovedHp < targetGamePlayer.health) {
+                    this.notify("<@" + gp.PlayerId + "> **shoved** <@" + targetGamePlayer.PlayerId + "> into a heart! 💝")
+                }
+                if (preShovedAp < targetGamePlayer.actions) {
+                    this.notify("<@" + gp.PlayerId + "> **shoved** <@" + targetGamePlayer.PlayerId + "> into some AP! ⚡")
+                }
+
+                if (preShovedHp == targetGamePlayer.health && preShovedAp == targetGamePlayer.actions) {
+                    this.notify("<@" + gp.PlayerId + "> **shoved** <@" + targetGamePlayer.PlayerId + "> out of their way!")
+                }
+
+                await targetGamePlayer.save();
+
+                gp.actions -= 1
+                Stats.increment(gp, Stats.GamePlayerStats.shoved)
+
+                await gp.save()
+                await move.save()
+
+                
+
+                return "Upgraded!"
+            }
+
             if (action == 'move') {
                 if (targetGamePlayer != null) {
                     throw new Error("A player is already in that space")
                 }
 
                 // did they collide with an object
-                // check for hearts, fires and walls
-                let collectedHeart = false
-                let collectedAP = false
-                let gotBurned = false
-                for (let i = 0; i < this.boardObjectLocations.length; i++) {
-                    const objectSpot = this.boardObjectLocations[i];
-                    if (objectSpot.x == targetX && objectSpot.y == targetY) {
-                        //check type, do stuff
-                        if (objectSpot.type == 'heart') {
-                            gp.health += 1
-                            this.removeObjectInSpace([targetX, targetY])
-                            collectedHeart = true
-                            break
-                        }
-                        if (objectSpot.type == 'power') {
-                            gp.actions += Math.floor(Math.random() * 3) + 2
-                            this.removeObjectInSpace([targetX, targetY])
-                            collectedAP = true
-                            break
-                        }
-                        if (objectSpot.type == 'fire') {
-                            if (gp.health == 1) {
-                                throw new Error("You don't have enough health to walk through fire")
-                            }
-                            gp.health -= 1
-                            gotBurned = true
-                        }
 
-                    }
-                }
+                this.doObjectInteractionsForPlayer(targetX, targetY, gp)
 
                 const directionDescription = this.sequelize.models.Move.describeMoveDirection([gp.positionX, gp.positionY], [targetX, targetY])
+                const movementVerb = this.sequelize.models.Move.getRandomMovementDescriptionWithEmoji()
 
                 gp.positionX = targetX
                 gp.positionY = targetY
                 gp.actions -= 1
 
-                const movementVerb = this.sequelize.models.Move.getRandomMovementDescriptionWithEmoji()
-                let walkedInFireText = ''
-                if (gotBurned) {
-                    walkedInFireText = ' *through fire* 🔥'
-                }
-
-                let heartPickupText = ''
-                if (collectedHeart) {
-                    heartPickupText = ' and collected a heart 💖'
-                    Stats.increment(gp, Stats.GamePlayerStats.pickedUpHp)
-                }
-
-                let apPickupText = ''
-                if (collectedAP) {
-                    heartPickupText = ' and collected AP ⚡'
-                    Stats.increment(gp, Stats.GamePlayerStats.pickedUpAp)
-                }
                 Stats.increment(gp, Stats.GamePlayerStats.walked)
 
                 await gp.save()
                 await move.save()
-                this.notify(`<@${gp.PlayerId}> ${movementVerb}${walkedInFireText} ${directionDescription}${heartPickupText}!`)
+                this.notify(`<@${gp.PlayerId}> ${movementVerb} ${directionDescription}!`)
 
                 return "Moved!"
             }
@@ -879,12 +898,10 @@ module.exports = function (sequelize) {
                     Stats.increment(gp, Stats.GamePlayerStats.killedSomeone)
                     Stats.increment(targetGamePlayer, Stats.GamePlayerStats.wasKilled)
 
-                    targetGamePlayer.status = 'dead'
                     const stolenHP = targetGamePlayer.actions
                     gp.actions += stolenHP  // give the killer the AP of the killed
-                    targetGamePlayer.actions = 0
-                    targetGamePlayer.juryVotesToSpend = 1
-                    targetGamePlayer.deathTime = new Date()
+
+                    this.markPlayerDead(targetGamePlayer)
                 }
 
                 //check if game is over
@@ -924,7 +941,29 @@ module.exports = function (sequelize) {
             throw new Error("Action Not implemented", action)
         }
 
+        markPlayerDead(targetGamePlayer) {
+            targetGamePlayer.status = 'dead'
+            targetGamePlayer.actions = 0
+            targetGamePlayer.juryVotesToSpend = 1
+            targetGamePlayer.deathTime = new Date()
+        }
 
+        doObjectInteractionsForPlayer(targetX, targetY, gp) {
+            let objectTheySteppedOn = this.getObjectInSpace([targetX, targetY])
+            if (objectTheySteppedOn != null) {
+                if (objectTheySteppedOn.type == 'heart') {
+                    gp.health += 1
+                    this.removeObjectInSpace([targetX, targetY])
+                }
+                if (objectTheySteppedOn.type == 'power') {
+                    gp.actions += Math.floor(Math.random() * 3) + 2
+                    this.removeObjectInSpace([targetX, targetY])
+                }
+                if (objectTheySteppedOn.type == 'fire') {
+                    gp.health -= 1
+                }
+            }
+        }
 
         async endGameAndBeginAnew(winType, winningPlayerArray, guild) {
             this.status = winType

@@ -50,7 +50,8 @@ module.exports = {
             zapped: 'zapped',
             startFire: 'startFire',
             gamePoint: 'gamePoint',
-            pickedUpAp: 'pickedUpAp'
+            pickedUpAp: 'pickedUpAp',
+            shoved: 'shoved',
         }
     }
 }
