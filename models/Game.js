@@ -993,12 +993,11 @@ module.exports = function (sequelize) {
                 //     this.notify("🚨 **Sudden Death!** Only two players remain! The storm approaches! 🌪️")
                 // }
 
-                if (countAlive == 1) {
-                    gp.winPosition = 1
-                    await gp.save()
-                    await this.endGameAndBeginAnew('won', [gp], guild)
-                }
-
+                // if (countAlive == 1) {
+                //     gp.winPosition = 1
+                //     await gp.save()
+                //     await this.endGameAndBeginAnew('won', [gp], guild)
+                // }
 
                 return "Shot!"
             }
@@ -1022,7 +1021,7 @@ module.exports = function (sequelize) {
                     this.removeObjectInSpace([targetX, targetY], 'heart')
                 }
                 if (obj.type == 'power') {
-                    gp.actions += Math.floor(Math.random() * 3) + 2
+                    gp.actions += Math.floor(Math.random() * 3) + 1
                     this.removeObjectInSpace([targetX, targetY], 'power')
                 }
                 if (obj.type == 'fire') {
