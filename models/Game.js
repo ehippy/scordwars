@@ -1153,6 +1153,26 @@ module.exports = function (sequelize) {
                     ['winPosition', 'ASC']
                 ]
             })
+
+            //order them like the front end scoreboard
+            allPlayers.forEach(player => {
+                if (player.stats.gamePoint === undefined) {
+                    player.stats.gamePoint = 0;
+                }
+            });
+
+            let sortedPlayers =  allPlayers.sort((a, b) => {
+                
+                if (b.stats.gamePoint === a.stats.gamePoint) {
+                    return b.stats.killedSomeone - a.stats.killedSomeone;
+                }
+                return b.stats.gamePoint - a.stats.gamePoint
+            })
+            for (let i = 0; i < sortedPlayers.length; i++) {
+                const p = sortedPlayers[i];
+                p.winPosition = i+1
+            }
+
             let leaderBoard = "### 🏆 Game Rankings 🏆"
             allPlayers.forEach(ep => {
                 leaderBoard += `\n`
@@ -1171,8 +1191,14 @@ module.exports = function (sequelize) {
                         break
                 }
                 leaderBoard += ` <@${ep.PlayerId}>`
+                if (typeof ep.stats.gamePoint !== 'undefined' && ep.stats.gamePoint != 0) {
+                    leaderBoard += ` 🏆 Points: ${ep.stats.gamePoint}`
+                }
                 if (typeof ep.stats.killedSomeone !== 'undefined') {
-                    leaderBoard += ` 🩸Kills: ${ep.stats.killedSomeone}`
+                    leaderBoard += ` 🩸 Kills: ${ep.stats.killedSomeone}`
+                }
+                if (typeof ep.stats.wasKilled !== 'undefined') {
+                    leaderBoard += ` ☠️ Deaths: ${ep.stats.wasKilled}`
                 }
             })
             this.notify(leaderBoard)
