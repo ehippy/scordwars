@@ -958,13 +958,13 @@ module.exports = function (sequelize) {
                 Stats.increment(targetGamePlayer, Stats.GamePlayerStats.wasShot)
 
                 targetGamePlayer.health -= 1
-                if (targetGamePlayer.health < 1) {
+                if (targetGamePlayer.health <= 0) {
 
                     Stats.increment(gp, Stats.GamePlayerStats.killedSomeone)
                     Stats.increment(targetGamePlayer, Stats.GamePlayerStats.wasKilled)
 
-                    const stolenHP = targetGamePlayer.actions
-                    gp.actions += stolenHP  // give the killer the AP of the killed
+                    
+                    gp.actions += 1  // give the killer an AP reward
 
                     this.markPlayerDead(targetGamePlayer)
                 }
@@ -972,6 +972,7 @@ module.exports = function (sequelize) {
                 //check if game is over
                 let countAlive = this.constructor.getLivingPlayers(this.GamePlayers).length
                 targetGamePlayer.winPosition = countAlive + 1
+                targetGamePlayer.actions = 0
                 await targetGamePlayer.save()
 
                 gp.actions -= 1
@@ -982,7 +983,7 @@ module.exports = function (sequelize) {
 
                 let shotMsg = "<@" + gp.PlayerId + "> **💥shot💥** <@" + targetGamePlayer.PlayerId + ">, reducing their health to **" + targetGamePlayer.health + "**! 🩸"
                 if (targetGamePlayer.health == 0) {
-                    shotMsg = "### <@" + gp.PlayerId + "> **☠️ ELIMINATED ☠️** <@" + targetGamePlayer.PlayerId + ">  and stole their AP!"
+                    shotMsg = "### <@" + gp.PlayerId + "> **☠️ ELIMINATED ☠️** <@" + targetGamePlayer.PlayerId + ">  and got an AP back!"
                 }
                 this.notify(shotMsg)
 
