@@ -399,7 +399,7 @@ module.exports = function (sequelize) {
             const numHearts = this.countObjectsOfType('heart')
             const desiredHearts = Math.floor(this.boardWidth * 0.9)
             if (numHearts < desiredHearts) {
-                for (let i = 0; i < desiredHearts-numHearts; i++) {
+                for (let i = 0; i < desiredHearts - numHearts; i++) {
                     await this.addHeart(players)
                 }
             }
@@ -407,7 +407,7 @@ module.exports = function (sequelize) {
             const numPowers = this.countObjectsOfType('power')
             const desiredPowers = Math.floor(this.boardWidth * 0.9)
             if (numPowers < desiredPowers) {
-                for (let i = 0; i < desiredPowers-numPowers; i++) {
+                for (let i = 0; i < desiredPowers - numPowers; i++) {
                     await this.addPower(players)
                 }
             }
@@ -736,7 +736,7 @@ module.exports = function (sequelize) {
                 if (gp.actions < 1) {
                     throw new Error("You don't have enough AP")
                 }
-                
+
                 //target destination check?
                 const deltaX = Number(targetX) - gp.positionX;
                 const deltaY = Number(targetY) - gp.positionY;
@@ -759,7 +759,7 @@ module.exports = function (sequelize) {
                 const preShovedHp = targetGamePlayer.health;
                 const preShovedAp = targetGamePlayer.actions;
                 this.doObjectInteractionsForPlayer(newX, newY, targetGamePlayer)
-                
+
                 if (preShovedHp > targetGamePlayer.health) {
                     if (targetGamePlayer.health < 1) {
                         this.markPlayerDead(targetGamePlayer)
@@ -795,7 +795,7 @@ module.exports = function (sequelize) {
                 await gp.save()
                 await move.save()
 
-                
+
 
                 return "Upgraded!"
             }
@@ -842,7 +842,7 @@ module.exports = function (sequelize) {
                 if (gp.health > 0) {
                     this.notify(`<@${gp.PlayerId}> ${movementVerb} ${directionDescription}${moveConsequence}!`)
                 }
-                
+
                 if (this.isObjectInSpace([targetX, targetY], 'goal')) {
                     this.notify(`🚨 <@${gp.PlayerId}> is on a goal spot! 🏁 Unseat them or they'll score!`);
                 }
@@ -963,8 +963,7 @@ module.exports = function (sequelize) {
                     Stats.increment(gp, Stats.GamePlayerStats.killedSomeone)
                     Stats.increment(targetGamePlayer, Stats.GamePlayerStats.wasKilled)
 
-                    targetGamePlayer.actions = 0
-                    gp.actions += 1  // give the killer an AP reward
+                    gp.actions += Math.floor(targetGamePlayer.actions/2)  // give the killer an AP reward
 
                     this.markPlayerDead(targetGamePlayer)
                 }
@@ -1007,7 +1006,7 @@ module.exports = function (sequelize) {
 
         markPlayerDead(targetGamePlayer) {
             targetGamePlayer.status = 'dead'
-            targetGamePlayer.actions = 0
+            targetGamePlayer.actions = Math.floor(targetGamePlayer.actions / 2)
             targetGamePlayer.juryVotesToSpend = 1
             targetGamePlayer.deathTime = new Date()
         }
@@ -1162,8 +1161,8 @@ module.exports = function (sequelize) {
                 }
             });
 
-            let sortedPlayers =  allPlayers.sort((a, b) => {
-                
+            let sortedPlayers = allPlayers.sort((a, b) => {
+
                 if (b.stats.gamePoint === a.stats.gamePoint) {
                     return b.stats.killedSomeone - a.stats.killedSomeone;
                 }
@@ -1171,13 +1170,13 @@ module.exports = function (sequelize) {
             })
             for (let i = 0; i < sortedPlayers.length; i++) {
                 const p = sortedPlayers[i];
-                p.winPosition = i+1
+                p.winPosition = i + 1
                 await p.save()
             }
 
             return sortedPlayers
         }
-        
+
         async sendAfterActionReport() {
 
 
