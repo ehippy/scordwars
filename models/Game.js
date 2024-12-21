@@ -1043,10 +1043,11 @@ module.exports = function (sequelize) {
             }
 
             await this.save()
+            await this.calcWinPositions()
+            await this.sendAfterActionReport()
+
             guild.currentGameId = null
             await guild.save()
-
-            await this.sendAfterActionReport()
 
             await this.sequelize.models.Game.createNewGame(this.GuildId)
         }
@@ -1142,7 +1143,7 @@ module.exports = function (sequelize) {
             return boardSize;
         }
 
-        async sendAfterActionReport() {
+        async calcWinPositions() {
 
             //after action report
             let allPlayers = await this.sequelize.models.GamePlayer.findAll({
@@ -1171,7 +1172,23 @@ module.exports = function (sequelize) {
             for (let i = 0; i < sortedPlayers.length; i++) {
                 const p = sortedPlayers[i];
                 p.winPosition = i+1
+                await p.save()
             }
+
+            return sortedPlayers
+        }
+        
+        async sendAfterActionReport() {
+
+
+            let allPlayers = await this.sequelize.models.GamePlayer.findAll({
+                where: {
+                    GameId: this.id
+                },
+                order: [
+                    ['winPosition', 'ASC']
+                ]
+            })
 
             let leaderBoard = "### 🏆 Game Rankings 🏆"
             allPlayers.forEach(ep => {
