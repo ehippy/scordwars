@@ -963,7 +963,7 @@ module.exports = function (sequelize) {
                     Stats.increment(gp, Stats.GamePlayerStats.killedSomeone)
                     Stats.increment(targetGamePlayer, Stats.GamePlayerStats.wasKilled)
 
-                    
+                    targetGamePlayer.actions = 0
                     gp.actions += 1  // give the killer an AP reward
 
                     this.markPlayerDead(targetGamePlayer)
@@ -972,7 +972,6 @@ module.exports = function (sequelize) {
                 //check if game is over
                 let countAlive = this.constructor.getLivingPlayers(this.GamePlayers).length
                 targetGamePlayer.winPosition = countAlive + 1
-                targetGamePlayer.actions = 0
                 await targetGamePlayer.save()
 
                 gp.actions -= 1
